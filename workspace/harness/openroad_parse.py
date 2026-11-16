@@ -153,12 +153,18 @@ class CongestionReport:
     total_usage_pct: Optional[float] = None
 
 
-# 形态 A（GRT-0096 表格）:  "metal2    123456   98765   80.00%   12 / 9 / 356"
+# 真实格式（OpenROAD grt/src/GlobalRouter.cpp::reportCongestion，2026-11）：
+#   [INFO GRT-0096] Final congestion report:
+#   Layer         Resource        Demand        Usage (%)    Max H / Max V / Total Congestion
+#   ---------------------------------------------------------------------------------------
+#   metal2          540000        431200           79.85%             6 /  0 / 120
+#   Total          1890000       1142200           60.43%             6 /  4 / 220
+# "Total Congestion" 列 == 每层 overflow 之和（源码变量名 total_overflow）。
 _RE_CONG_ROW = re.compile(
     r"^\s*(?P<layer>[A-Za-z]\w*)\s+(?P<res>\d+)\s+(?P<dem>\d+)\s+(?P<usage>\d+(?:\.\d+)?)%\s+"
     r"(?P<mh>\d+)\s*/\s*(?P<mv>\d+)\s*/\s*(?P<ov>\d+)\s*$", re.M)
-# 形态 B（旧版 / 简式）: "[INFO GRT-0xxx] Total overflow: 356"  或 "Overflow: 356"
-_RE_TOTAL_OV = re.compile(r"total\s+overflow\s*[:=]?\s*(\d+)", re.I)
+# 简式兜底: "Total overflow: 356" / "overflow: 356"
+_RE_TOTAL_OV = re.compile(r"total\s+(?:overflow|congestion)\s*[:=]?\s*(\d+)", re.I)
 _RE_OV_SIMPLE = re.compile(r"^\s*(?:\[INFO GRT-\d+\]\s*)?overflow\s*[:=]\s*(\d+)", re.I | re.M)
 
 
@@ -188,40 +194,70 @@ def parse_congestion(text: str) -> Optional[CongestionReport]:
 
 # ---------------------------------------------------------------------------
 # repair_timing / repair_design 动作统计
+# 真实格式（OpenROAD rsz，2026-11）：
+#   [INFO RSZ-0038] Inserted 2 buffers in 2 nets.                 (repair_design)
+#   [INFO RSZ-00xx] Inserted N buffers, M to split loads.         (repair_timing)
+#   [INFO RSZ-00xx] Inserted N buffers.
+#   [INFO RSZ-00xx] Removed N buffers.
+#   [INFO RSZ-00xx] Resized N instances: a up, b up match, c down, d VT
+#   [INFO RSZ-00xx] Resized N instances.
+#   [INFO RSZ-00xx] Swapped pins on N instances.
+#   [INFO RSZ-00xx] Cloned N instances.
+#   [WARNING RSZ-00xx] Unable to repair all setup violations.
+#   [ERROR RSZ-00xx] Max utilization reached.   /  Max buffer count reached.
+#   进度表（repair_timing -setup，policy/ProgressReporter.cc）：
+#      Iter   | Removed | Resized | Inserted | Cloned |  Pin  |   Area   |    WNS   |    TNS     |  Viol  |  Worst
+#             | Buffers |  Gates  | Buffers  |  Gates | Swaps |          |          |            | Endpts | Endpoint
+#      final |       0 |     410 |      230 |     12 |    55 |   +3.2% |   -0.280 |      -77.0 |    301 | u_x/y
 # ---------------------------------------------------------------------------
 @dataclass
 class RepairStats:
     inserted_buffers: int = 0
+    removed_buffers: int = 0
     resized: int = 0
     cloned: int = 0
     pin_swaps: int = 0
     split_loads: int = 0
-    unfixable_endpoints: int = 0
+    unfixable: bool = False               # "Unable to repair all setup violations"
     max_utilization_hit: bool = False
-    repair_iterations: int = 0
+    max_buffer_hit: bool = False
+    final_wns: Optional[float] = None     # 进度表 final 行
+    final_tns: Optional[float] = None
+    final_viol_endpoints: Optional[int] = None
+    area_growth_pct: Optional[float] = None
 
 
 _RE_REPAIR = [
-    ("inserted_buffers", re.compile(r"[Ii]nserted\s+(\d+)\s+(?:input |output )?buffers?")),
-    ("resized", re.compile(r"[Rr]esized\s+(\d+)\s+instances?")),
+    ("inserted_buffers", re.compile(r"[Ii]nserted\s+(\d+)\s+buffers?\b")),
+    ("removed_buffers", re.compile(r"[Rr]emoved\s+(\d+)\s+buffers?\b")),
+    ("resized", re.compile(r"[Rr]esized\s+(\d+)\s+instances?\b")),
     ("cloned", re.compile(r"[Cc]loned\s+(\d+)\s+(?:instances?|gates?)")),
-    ("pin_swaps", re.compile(r"[Ss]wapped\s+pins?\s+(?:on|of)\s+(\d+)\s+instances?")),
-    ("split_loads", re.compile(r"[Ss]plit\s+(\d+)\s+loads?")),
-    ("unfixable_endpoints", re.compile(r"[Uu]nable to repair\s+(\d+)\s+(?:of\s+\d+\s+)?(?:paths|endpoints)")),
+    ("pin_swaps", re.compile(r"[Ss]wapped\s+pins?\s+on\s+(\d+)\s+instances?")),
+    ("split_loads", re.compile(r"(\d+)\s+to\s+split\s+loads?")),
 ]
-_RE_MAXUTIL = re.compile(r"max utilization reached", re.I)
-# repair_timing 的迭代表："Iteration |  WNS | ..." 表头后面是 "      20  | -0.280 | ..." 这样的行
-_RE_REPAIR_ITER = re.compile(r"^\s*(\d+)\s*\|\s*-?\d+(?:\.\d+)?\s*\|", re.M)
+_RE_UNFIXABLE = re.compile(r"Unable to repair all setup violations", re.I)
+_RE_MAXUTIL = re.compile(r"Max utilization reached", re.I)
+_RE_MAXBUF = re.compile(r"Max buffer count reached", re.I)
+# 进度表 final 行：label | removed | resized | inserted | cloned | swaps | area% | WNS | [StTNS |] TNS | viol | worst
+_RE_PROGRESS_FINAL = re.compile(
+    r"^\s*final\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([+-]?\d+(?:\.\d+)?)%\s*\|"
+    r"\s*(-?\d+(?:\.\d+)?)\s*\|(?:\s*-?\d+(?:\.\d+)?\s*\|)?\s*(-?\d+(?:\.\d+)?)\s*\|\s*(\d+)\s*\|", re.M)
 
 
 def parse_repair_stats(text: str) -> RepairStats:
     st = RepairStats()
     for attr, pat in _RE_REPAIR:
-        tot = sum(int(x) for x in pat.findall(text))
-        setattr(st, attr, tot)
+        setattr(st, attr, sum(int(x) for x in pat.findall(text)))
+    st.unfixable = bool(_RE_UNFIXABLE.search(text))
     st.max_utilization_hit = bool(_RE_MAXUTIL.search(text))
-    it = _RE_REPAIR_ITER.findall(text)
-    st.repair_iterations = int(it[-1]) if it else 0
+    st.max_buffer_hit = bool(_RE_MAXBUF.search(text))
+    rows = _RE_PROGRESS_FINAL.findall(text)
+    if rows:
+        r = rows[-1]
+        st.area_growth_pct = float(r[5])
+        st.final_wns = float(r[6])
+        st.final_tns = float(r[7])
+        st.final_viol_endpoints = int(r[8])
     return st
 
 

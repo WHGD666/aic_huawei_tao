@@ -34,14 +34,20 @@ class LLMClient:
         max_retries: int = 3,
         record_dir: Optional[Path] = None,
         mode: str = "live",  # live | record | replay
+        thinking: Optional[bool] = None,  # None = 跟随 DEEPSEEK_THINKING 环境变量（默认关）
     ):
         self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY", "")
         self.base_url = (base_url or os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")).rstrip("/")
-        self.model = model or os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+        self.model = model or os.environ.get("DEEPSEEK_MODEL", "deepseek-flash")
         self.timeout_s = timeout_s
         self.max_retries = max_retries
         self.mode = mode
         self.record_dir = record_dir
+        # deepseek-flash 默认开 thinking：reasoning tokens 计入 completion 费用，且 max_tokens 很小时 content 会为空。
+        # 代码生成/分析场景默认关掉；要用时设 DEEPSEEK_THINKING=1。
+        if thinking is None:
+            thinking = os.environ.get("DEEPSEEK_THINKING", "0") in ("1", "true", "yes")
+        self.thinking = thinking
         if mode in ("record", "replay") and record_dir is None:
             raise ValueError("record/replay mode requires record_dir")
         if mode != "replay" and not self.api_key:
@@ -65,6 +71,7 @@ class LLMClient:
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": False,
+            "thinking": {"type": "enabled" if self.thinking else "disabled"},
         }
         text, usage, raw = self._post(payload)
         if self.mode == "record":
@@ -93,10 +100,13 @@ class LLMClient:
                     choice = data["choices"][0]
                     text = choice["message"]["content"] or ""
                     u = data.get("usage", {})
+                    # 真实字段（2026-11 实测）：prompt_tokens / completion_tokens / prompt_cache_hit_tokens /
+                    # prompt_cache_miss_tokens / completion_tokens_details.reasoning_tokens
                     usage = Usage(
                         prompt_tokens=int(u.get("prompt_tokens", 0)),
                         completion_tokens=int(u.get("completion_tokens", 0)),
-                        cache_hit_tokens=int(u.get("prompt_cache_hit_tokens", 0)),
+                        cache_hit_tokens=int(u.get("prompt_cache_hit_tokens", u.get("prompt_tokens_details", {}).get("cached_tokens", 0))),
+                        reasoning_tokens=int(u.get("completion_tokens_details", {}).get("reasoning_tokens", 0) or 0),
                     )
                     return text, usage, data
                 if r.status_code in (429, 500, 502, 503, 504):
@@ -130,4 +140,5 @@ class LLMClient:
             int(u.get("prompt_tokens", 0)),
             int(u.get("completion_tokens", 0)),
             int(u.get("prompt_cache_hit_tokens", 0)),
+            int((u.get("completion_tokens_details") or {}).get("reasoning_tokens", 0) or 0),
         )

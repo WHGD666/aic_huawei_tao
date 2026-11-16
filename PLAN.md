@@ -1,9 +1,9 @@
 # 赛题 1 总体规划 —— 面向 3D 芯片物理设计的多阶段算法协同演化
 
-> 版本 v0.2 · 2026-11-17 · 状态：**准备阶段，等待官方容器与基线代码**
+> 版本 v0.3 · 2026-11-17 · 状态：**准备阶段；Open3DBench 真实结构已从源码确认；等待官方容器**
 > 本文件是项目的"总控文档"：题目理解、策略、harness 设计、环境、目录、里程碑、风险、待确认事项。后续所有改动以此为准并持续更新。
 >
-> 配套文档：`docs/openroad_reference.md`（六环节 ↔ OpenROAD 命令/参数/指标/跨 PDK 陷阱）、`docs/knob_catalog.md`（演化旋钮目录与探针顺序）、`docs/submission_checklist.md`（提交清单）、`workspace/README.md`（怎么跑）。
+> 配套文档：**`docs/open3dbench_notes.md`（真实平台结构、评估流程、输入输出契约 —— 先读这个）**、`docs/openroad_reference.md`（六环节 ↔ OpenROAD 命令/参数，§10 勘误表已按源码校正）、`docs/knob_catalog.md`（演化旋钮目录）、`docs/submission_checklist.md`（提交清单）、`workspace/README.md`（怎么跑）。
 > GitHub：https://github.com/WHGD666/aic_huawei_tao （根目录 `git_sync.bat` 推送）
 
 ---
@@ -174,15 +174,19 @@ final: 导出最佳候选 candidate.patch + results/ + logs/ (父子关系图)
 
 ### 4.2 我这边的沙箱（Linux）
 
-Ubuntu 22.04 / Python 3.10 / 无 torch / 无 GPU / 3.9 GB 空间 / **无外网**——以下域名全部被拦：`api.deepseek.com`、`openroad.readthedocs.io`、`github.com`、`raw.githubusercontent.com`、`pypi.org`。
-→ 只能用来写代码、跑纯 Python 单元测试（mock 模式）。所有安装、API 调用、git push、EDA 流程都要在你的 Windows 上跑，我会把命令写成脚本给你执行。
-→ 如果你希望我能直接查文档 / 调 API，需要在 Claude 应用的 Setup → Inference configuration → Capabilities → General restrictions → Allowed egress hosts 里加上述域名并重启应用。
+Ubuntu 22.04 / Python 3.10 / 无 torch / 无 GPU / 3.9 GB 空间。
+网络（2026-11-17 你放行后）：**`api.deepseek.com`、`github.com`（含 git clone）、`pypi.org` 可达**；`openroad.readthedocs.io` 被 Cloudflare 挑战拦（改从 OpenROAD GitHub 仓库的 `src/*/README.md` 读，内容一样）；`raw.githubusercontent.com`、`api.github.com`、`api-docs.deepseek.com` 仍被拦。
+→ 能做：写代码、跑 mock 测试、**调 DeepSeek API**、**克隆仓库读源码**。不能做：装 torch、跑 EDA 流程、git push（沙箱里 push 没凭据，仍用你本机 `git_sync.bat`）。
 
-### 4.3 DeepSeek API（官方直连，非中转）
+### 4.3 DeepSeek API（官方直连，已实测）
 
-- 你提供的 key 已写入 `F:\huawei_aic_tao\task1\workspace\.env`（已 gitignore，**不会**进入任何日志、记忆或提交物；`git_sync.bat` 推送前会再查一次）
-- 我无法联网核实 `DeepSeek-V4.1-Flash` 在公开 API 里的模型 ID 和单价 → 你本机跑 `tools/probe_models.py` 列出账号可见的模型名，把对应的填进 `.env` 的 `DEEPSEEK_MODEL`，单价填进 `config/pricing.yaml`
-- 开发预算 10 元，分配见 3.5；`budget.json` 会实时记账
+- key 在 `workspace/.env`（gitignore）；余额 9.78 元（2026-11-17 02:20）
+- 账号可见模型：**`deepseek-flash`**（= 题面 V4.1-Flash；`deepseek-chat` 是它的别名，返回 model 字段仍是 deepseek-flash）、`deepseek-v4-pro`
+- **`deepseek-flash` 默认开 thinking**：返回 `reasoning_content`，`reasoning_tokens` 计入 `completion_tokens` 收费，且 `max_tokens` 小时 content 为空。harness 默认发 `"thinking": {"type": "disabled"}`（`DEEPSEEK_THINKING=1` 可开）
+- 缓存命中真实存在：同前缀第二次调用 `prompt_cache_hit_tokens=512`（按 64-token 块对齐）→ 提示词"固定前缀在前"的设计有效
+- usage 字段：`prompt_tokens / completion_tokens / prompt_cache_hit_tokens / prompt_cache_miss_tokens / completion_tokens_details.reasoning_tokens`
+- 单价：定价页打不开，`config/pricing.yaml` 是估计值；`tools/calibrate_pricing.py` 可用余额差反推（花约 0.05 元）
+- 实测一次完整 propose（system 991 tok + user 603 tok → 205 tok 输出）：2.1 秒，约 0.002 元，格式 100% 符合协议，gate 通过，patch 可 `git apply`。按此估算 30 轮 × (propose + analyze + 偶尔 fix) ≈ **0.3–0.5 元**，远低于 15 元上限——预算压力主要在评估次数而非 API 费
 
 ### 4.4 Git 工作流
 
@@ -263,15 +267,18 @@ F:\huawei_aic_tao\task1\
 
 ## 8. 需要你确认 / 提供的事项
 
-1. **官方开发容器**的获取方式（镜像链接 / 网盘）与**评估接口文档**（如何提交候选、返回什么、本地冒烟是否计入 30 次）
-2. 官方**初始算法基线值**是否直接给出，还是要自己花 1 次评估跑
-3. 公开 API 里 `DeepSeek-V4.1-Flash` 的确切模型名和单价（跑一下 `tools/probe_models.py` 就能看到模型名）
-4. 官方模型代理的接口形式（是否 OpenAI 兼容、是否按缓存命中打折）—— 影响 `llm.py` 和省钱策略
+**已解决（2026-11-17）**：模型名 = `deepseek-flash`；API 可达；Open3DBench 仓库 = `lamda-bbo/Open3DBench`，镜像 `shiyunqi/open3dbench:eval` / `:place`；两层建模方式已确认（见 `docs/open3dbench_notes.md`）。
+
+**仍待你 / 组委会**：
+1. **官方开发容器**与**评估接口文档**（如何提交候选、返回什么、本地冒烟是否计入 30 次）
+2. 任务一的"一次时序优化"是 `repair_design` 还是 `repair_timing -setup`？采样 json key 是什么？（`open3dbench_notes.md` §2 差异表第 1、2 条，**最影响策略**）
+3. 官方**初始算法基线值**是否直接给出
+4. 官方模型代理的接口形式（是否 OpenAI 兼容、是否同样按缓存命中打折、thinking 是否允许关）
 5. 官方评测环境是否提供 GPU
-6. 在 Docker Desktop 里把磁盘镜像位置改到 `F:\huawei_aic_tao\task1\env\docker`（需要 GUI 操作，我没法替你点）
-7. 本机 `nvidia-smi` 输出（确认 GPU 型号与显存）
-8. 本机 git 的位置（`where git`）
-9. 基线违例量为 0 时改善比例如何定义（向组委会答疑提问）
+6. **Docker Desktop 磁盘迁到 `F:\huawei_aic_tao\task1\env\docker`**（GUI 操作），然后跑 `workspace\env\05_pull_open3dbench.bat`
+7. 本机 `nvidia-smi` 输出；`where git`
+8. 基线违例量为 0 时改善比例如何定义（向组委会答疑提问）
+9. 是否允许修改 GRT 的 layer adjustment / Makefile 级参数（`DONT_USE_CELLS`、`PLACE_DENSITY`、`CTS_*`、`GLOBAL_ROUTE_ARGS`）——这些是最便宜的旋钮，但可能被视为"改评估口径"
 
 ---
 
@@ -286,7 +293,14 @@ F:\huawei_aic_tao\task1\
 - `docs/`：OpenROAD 参考、旋钮目录、提交清单
 - 25 个测试全绿；git 仓库根建在项目根，已配远端
 
+### 2026-11-17 晚 · 联网后的核实
+- DeepSeek：模型 `deepseek-flash`，thinking 默认开（已在 llm.py 关掉并记录 reasoning_tokens），缓存命中生效；一次真实 propose 0.002 元、格式全对、patch 可 git apply
+- Open3DBench 源码精读（`lamda-bbo/Open3DBench` v1.1）：一个设计 20 层金属、`_bottom/_upper` 双套 cell、HBT 为 CORE 宏；LoL 评估流程 = 读合并 DEF → 分层 detailed_placement → GRT → DRT → finish；DREAMPlace fork 已内置时序驱动网权重但基线没开；MoL 里有 GIN 对比学习切分（宏级）
+- OpenROAD 源码核对：`repair_timing` 完整选项（含 `-sequence` 修复顺序）、rsz 日志与进度表真实格式、GRT 表头 "Total Congestion"——解析器与样例已更新
+- 新增 `docs/open3dbench_notes.md`、`env/05-07_*.bat`（拉镜像 / 克隆 / 本机跑 bp_fe）、`tools/calibrate_pricing.py`
+- 摘录 `third_party/open3dbench_ref/`（15 MB，不入库）
+
 ### 下一步（按优先级）
-1. 你本机：建 conda 环境 → `probe_models.py` 确认模型名 → Docker 磁盘迁 F → `git_sync.bat`
-2. 拿到官方容器：跑通 1 算例 1 种子，用真实日志替换 `tests/samples/`，校正解析器与 `docs/openroad_reference.md` 勘误表
-3. 填真实白名单路径，接评估接口（`official` 或 `logdir` 模式），M4 小预算真跑
+1. 你本机：Docker 磁盘迁 F → `05_pull_open3dbench.bat` → `06_clone` → 下载 Google Drive 的 benchmarks/binaries → `07_run_lol_bpfe.bat`（M2：真实耗时与日志）
+2. 向组委会问 §8 第 2、9 条
+3. 拿到官方容器：填真实白名单，接评估接口，M4 小预算真跑

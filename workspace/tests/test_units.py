@@ -92,7 +92,18 @@ def test_apply_edits_and_diff(tmp_path):
     changed, errs = apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "TIMING_WEIGHT = 0.0", "TIMING_WEIGHT = 0.5")])
     assert not errs and "TIMING_WEIGHT = 0.5" in changed["partition/gnn_partition.py"]
     d = git_diff(FAKE, work, list(changed))
-    assert "+TIMING_WEIGHT = 0.5" in d and "a/partition/gnn_partition.py" in d
+    assert "+TIMING_WEIGHT = 0.5" in d
+    assert d.startswith("diff --git a/partition/gnn_partition.py b/partition/gnn_partition.py")
+    assert "--- a/partition/gnn_partition.py" in d and "+++ b/partition/gnn_partition.py" in d
+    # 提交要求：candidate.patch 必须能用 git apply 打到官方基线上
+    import shutil, subprocess
+    base_copy = tmp_path / "base"
+    shutil.copytree(FAKE, base_copy)
+    (tmp_path / "c.patch").write_text(d, encoding="utf-8")
+    r = subprocess.run(["git", "apply", "--check", str(tmp_path / "c.patch")], cwd=base_copy, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    r = subprocess.run(["git", "apply", str(tmp_path / "c.patch")], cwd=base_copy, capture_output=True, text=True)
+    assert r.returncode == 0 and "TIMING_WEIGHT = 0.5" in (base_copy / "partition/gnn_partition.py").read_text()
     _, errs = apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "NOPE", "x")])
     assert errs and "not found" in errs[0]
 

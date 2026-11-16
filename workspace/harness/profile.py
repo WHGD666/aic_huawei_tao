@@ -104,7 +104,16 @@ def render_profile(profiles: List[RunProfile], max_lines: int = 60) -> str:
                 lines.append(f"      {tp.startpoint} -> {tp.endpoint}: slack={tp.slack:.3f} stages={tp.stages} wire%={tp.wire_ratio:.0%}{' XTIER' if tp.crosses_tier else ''}")
         if ps[0].repair:
             r = ps[0].repair
-            lines.append(f"    repair_timing: +{r.inserted_buffers} buffers, {r.resized} resized, {r.cloned} cloned, {r.unfixable_endpoints} unfixable{', MAX-UTIL HIT' if r.max_utilization_hit else ''}")
+            tail = []
+            if r.final_viol_endpoints is not None:
+                tail.append(f"{r.final_viol_endpoints} endpoints still violating")
+            if r.unfixable:
+                tail.append("UNFIXABLE")
+            if r.max_utilization_hit:
+                tail.append("MAX-UTIL HIT")
+            if r.max_buffer_hit:
+                tail.append("MAX-BUF HIT")
+            lines.append(f"    repair_timing: +{r.inserted_buffers} buffers, {r.resized} resized, {r.cloned} cloned, {r.pin_swaps} pin-swaps" + (", " + ", ".join(tail) if tail else ""))
         if ps[0].congestion:
             c = ps[0].congestion
             worst = sorted(c.per_layer.items(), key=lambda kv: -kv[1]["overflow"])[:2]

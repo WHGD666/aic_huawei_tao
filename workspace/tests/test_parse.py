@@ -67,11 +67,18 @@ def test_congestion_table():
 def test_repair_stats():
     r = parse_repair_stats(_r("repair_ng45.log"))
     assert r.inserted_buffers == 87 + 230
+    assert r.removed_buffers == 8
     assert r.resized == 1203 + 410
-    assert r.pin_swaps == 55 and r.cloned == 12
-    assert r.unfixable_endpoints == 37
-    assert r.max_utilization_hit is True
-    assert r.repair_iterations == 20
+    assert r.pin_swaps == 55 and r.cloned == 12 and r.split_loads == 18
+    assert r.unfixable is True
+    assert r.max_utilization_hit is True and r.max_buffer_hit is False
+    # 进度表 final 行
+    assert r.final_wns == pytest.approx(-0.280) and r.final_tns == pytest.approx(-77.0)
+    assert r.final_viol_endpoints == 301 and r.area_growth_pct == pytest.approx(3.2)
+    # 带 StTNS 列的变体也要能解析
+    alt = "    final |       1 |       2 |        3 |      4 |     5 |    +1.0% |   -0.100 |      -20.0 |      -50.0 |     77 | x/y\n"
+    r2 = parse_repair_stats(alt)
+    assert r2.final_tns == pytest.approx(-50.0) and r2.final_viol_endpoints == 77
 
 
 def test_stage_status():

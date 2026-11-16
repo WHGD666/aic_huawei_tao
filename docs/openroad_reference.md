@@ -19,10 +19,10 @@
 | 全局布线 GRT | — | 可改 | `set_routing_layers`、`set_global_routing_layer_adjustment`、`global_route`、`estimate_parasitics -global_routing` | **任务二终点**：GRT 后，传播时钟 + GRT 寄生；溢出取两层之和 |
 | 静态时序分析 STA | 固定 | 固定 | `report_wns`、`report_tns`、`report_checks`、`report_check_types` | — |
 
-两层芯片在 OpenROAD 里怎么建模（**待官方容器确认**，两种常见做法）：
-1. **两个独立 OpenROAD 设计**（上层 / 下层各一套 LEF/DEF），HBT 在两层各建为 BTERM/pin，跨层时序由评估器在"连通的双层时序视图"里拼接；
-2. **一个叠层设计**：技术 LEF 把两层金属堆叠成一套（如 M1..M10 + 键合层 + M1'..M10'），HBT 建模为穿过键合层的特殊 via/cut，STA 天然连通。
-题面说 "在连通的双层时序视图中采集结果"，更像做法 1 + 评估器拼接或做法 2。确认后更新本节和 `harness/openroad_parse.py`。
+两层芯片在 OpenROAD 里怎么建模 —— **已从 Open3DBench 源码确认（见 `docs/open3dbench_notes.md` §1）**：
+一个设计、一套 tech LEF、20 层金属（metal1–10 下层，`hb_layer` CUT 层，metal11–20 上层镜像）。单元库复制为 `_bottom`（引脚 metal1）和 `_upper`（引脚 metal19）两套；切分 = 选 master 后缀。HBT 是 1µm×1µm 的 CORE 宏 `HBT_BOTIN`/`HBT_TOPIN`（metal10↔metal11，MUSTJOIN），作为虚拟缓冲器插在跨层网里，STA 天然连通。GRT 溢出表 `Total` 行就是两层之和。
+
+> 2026-11-17 校正：本文最初按"两个独立设计 + 评估器拼接"假设写的部分已废弃；下面各节的命令签名已对照 OpenROAD 仓库 `src/*/README.md`（commit 615e34e，2026-11-16）核对，`repair_timing` 选项与 GRT/RSZ 日志格式以 §10 勘误为准。
 
 ---
 
@@ -233,8 +233,17 @@ set tns [sta::total_negative_slack_cmd "max"]
 
 ---
 
-## 10. 勘误（拿到官方容器后填写）
+## 10. 勘误（对照 OpenROAD 源码 / Open3DBench 仓库，2026-11-17）
 
 | 本文条目 | 实际 | 修改日期 |
 |---|---|---|
-| | | |
+| §0 两层建模"待确认" | 一个设计 20 层金属 + HBT CORE 宏，见 open3dbench_notes.md | 2026-11-17 |
+| §3 `repair_timing` 选项 | 真实签名含 `-sequence`（默认 "unbuffer vt_swap sizeup swap buffer clone split"）、`-phases`（默认 "LEGACY LAST_GASP CRIT_VT_SWAP"，可选 `PARALLEL_EVAL`）、`-path_group reg2reg|in2reg|reg2out|in2out|gated_clock`、`-skip_size_down_fanout`、`-skip_buffer_removal`、`-skip_buffer_to_inverters`、`-skip_last_gasp`、`-skip_vt_swap`、`-skip_crit_vt_swap`、`-skip_crpr`、`-effort low|medium|high`、`-max_passes`、`-max_iterations`、`-max_repairs_per_pass`、`-match_cell_footprint`、`-profile_mode 0-3`；`-repair_tns` 默认 100。**`-sequence` 直接对应题面"修复顺序"可演化项** | 2026-11-17 |
+| §3 Open3DBench 的 `resize.tcl` | 只有 `repair_design` + `buffer_ports` + `repair_tie_fanout`，**没有 `repair_timing`**；`repair_timing` 只在 cts.tcl 之后（`-repair_tns $TNS_END_PERCENT`，可加 `-setup_margin` / `-skip_pin_swap` / `-skip_gate_cloning`）。任务一的"一次时序优化"是哪个 **待确认** | 2026-11-17 |
+| §3 rsz 日志 | `Inserted N buffers[, M to split loads]` / `Removed N buffers` / `Resized N instances[: a up, b up match, c down, d VT]` / `Swapped pins on N instances` / `Cloned N instances` / `[WARNING] Unable to repair all setup violations` / `[ERROR] Max utilization reached` / `Max buffer count reached`；进度表列为 `Iter | Removed Buffers | Resized Gates | Inserted Buffers | Cloned Gates | Pin Swaps | Area | WNS | [StTNS |] TNS | Viol Endpts | Worst Endpoint`，末行标签 `final` | 2026-11-17 |
+| §5 GRT 表头 | `Layer Resource Demand Usage (%) Max H / Max V / Total Congestion`（不是 Total Overflow）；`[INFO GRT-0096] Final congestion report:`；`report_congestion` / `has_congestion` 命令可单独调用 | 2026-11-17 |
+| §5 `global_route` 选项 | 真实签名含 `-critical_nets_percentage`（默认 0）、`-skip_large_fanout_nets`、`-congestion_report_iter_step`、`-use_cugr`、`-resistance_aware`、`-res_aware_nets_percentage`；`-congestion_iterations` 默认 50（Open3DBench 设 5） | 2026-11-17 |
+| §5 layer adjustment | Open3DBench 的 `fastroute.tcl` **没有** adjustment（global_route.tcl 的 0.5 被 FASTROUTE_TCL 覆盖），只做 make_tracks | 2026-11-17 |
+| §4 CTS | Open3DBench `cts.tcl`：`-sink_clustering_size 30`、`-sink_clustering_max_diameter 100`、`-balance_levels`，可选 `-distance_between_buffers`；之后 `set_propagated_clock` → `repair_clock_nets` → `repair_timing -setup -hold -repair_tns $TNS_END_PERCENT`。nangate45_3D 平台跳过 CTS 后的 `detailed_placement` | 2026-11-17 |
+| §7 指标 | ORFS 风格 `utl::set_metrics_stage` → 每阶段 json：`placeopt__*`、`cts__*`、`globalroute__*`、`finish__*`；Open3DBench 论文取 `finish__timing__setup__ws/tns`、`detailedroute__route__wirelength` | 2026-11-17 |
+| §1 单位 | NanGate45_3D 平台 Liberty ns、`PLACE_SITE FreePDK45_38x28_10R_NP_162NW_34O`、`PLACE_DENSITY 0.30`、`DONT_USE_CELLS` 禁掉全部 `_upper` BUF/CLKBUF | 2026-11-17 |

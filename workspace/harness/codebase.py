@@ -186,7 +186,7 @@ def apply_edits(base_root: Path, work_root: Path, edits: List[Edit]) -> Tuple[Di
 
 
 def git_diff(base_root: Path, work_root: Path, files: List[str]) -> str:
-    """用 git diff --no-index 生成标准 unified diff（相对路径）。"""
+    """用 git diff --no-index 生成标准 unified diff，路径规整为 a/<rel> b/<rel>（可直接 git apply 到基线）。"""
     parts = []
     for f in files:
         a, b = base_root / f, work_root / f
@@ -194,9 +194,15 @@ def git_diff(base_root: Path, work_root: Path, files: List[str]) -> str:
             ["git", "diff", "--no-index", "--", str(a), str(b)],
             capture_output=True, text=True,
         )
-        d = r.stdout
-        # 把绝对路径规整成 a/<rel> b/<rel>
-        d = d.replace(str(a).replace("\\", "/"), f"a/{f}").replace(str(b).replace("\\", "/"), f"b/{f}")
-        d = d.replace(str(a), f"a/{f}").replace(str(b), f"b/{f}")
-        parts.append(d)
-    return "\n".join(parts)
+        lines = []
+        for ln in r.stdout.splitlines():
+            if ln.startswith("diff --git "):
+                lines.append(f"diff --git a/{f} b/{f}")
+            elif ln.startswith("--- ") and not ln.startswith("--- /dev/null"):
+                lines.append(f"--- a/{f}")
+            elif ln.startswith("+++ ") and not ln.startswith("+++ /dev/null"):
+                lines.append(f"+++ b/{f}")
+            else:
+                lines.append(ln)
+        parts.append("\n".join(lines) + "\n")
+    return "".join(parts)

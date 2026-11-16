@@ -23,12 +23,14 @@ class Usage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     cache_hit_tokens: int = 0
+    reasoning_tokens: int = 0          # deepseek-flash thinking 模式下计入 completion 的推理 token（已含在 completion_tokens 内）
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
             self.prompt_tokens + other.prompt_tokens,
             self.completion_tokens + other.completion_tokens,
             self.cache_hit_tokens + other.cache_hit_tokens,
+            self.reasoning_tokens + other.reasoning_tokens,
         )
 
 
