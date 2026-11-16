@@ -1,0 +1,8 @@
+# harness 轻量环境依赖（故意保持最小：LLM 客户端只用 requests）
+requests>=2.31
+pyyaml>=6.0
+python-dotenv>=1.0
+pyflakes>=3.2
+pytest>=8.0
+# 可选：更好的日志表格展示
+tabulate>=0.9

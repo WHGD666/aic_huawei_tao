@@ -1,0 +1,16 @@
+# DeepSeek 价格表（元 / 百万 token）。官方代理单价确认后只改这里。
+# 下面是 deepseek-chat 公开的非高峰价格估计值 —— 请用 tools/probe_models.py 看到的模型名与官网价格核对后更新。
+models:
+  deepseek-chat:
+    input_cache_hit: 0.1
+    input_cache_miss: 1.0
+    output: 2.0
+  deepseek-reasoner:
+    input_cache_hit: 0.25
+    input_cache_miss: 1.0
+    output: 4.0
+  # 题面指定的基座；名称/价格待确认，先按 flash 档估计
+  deepseek-v4.1-flash:
+    input_cache_hit: 0.1
+    input_cache_miss: 0.5
+    output: 1.0

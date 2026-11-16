@@ -1,0 +1,32 @@
+# ---- secrets ----
+workspace/.env
+*.key
+
+# ---- environments (never commit; rebuilt by workspace/env/*.bat) ----
+env/
+!env/conda/.gitkeep
+!env/docker/.gitkeep
+third_party/
+!third_party/.gitkeep
+
+# ---- run artifacts (large / regenerable). Final submission copies are curated manually ----
+workspace/logs/**
+!workspace/logs/.gitkeep
+workspace/results/**
+!workspace/results/.gitkeep
+workspace/candidates/**
+!workspace/candidates/.gitkeep
+workspace/baseline/**
+!workspace/baseline/.gitkeep
+
+# ---- python ----
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ---- misc ----
+*.vhdx
+*.tar
+*.log
+.DS_Store
+Thumbs.db

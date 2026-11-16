@@ -1,0 +1,51 @@
+# harness 主配置
+task: partition_placement          # partition_placement | full_flow
+seed: 0
+
+budget:
+  max_evaluations: 30               # 官方上限
+  max_cost_cny: 15.0                # 官方上限
+  dev_cost_cny: 10.0                # 开发阶段自己的钱包
+  per_round_cost_cap_cny: 0.35      # 单轮软上限，超过则下一轮缩短 prompt
+  reserve_evaluations: 2            # 最后保留用于复核
+
+llm:
+  model: ${DEEPSEEK_MODEL}
+  temperature_propose: 0.7
+  temperature_fix: 0.2
+  temperature_analyze: 0.1
+  max_tokens_propose: 3000
+  max_tokens_fix: 2500
+  max_tokens_analyze: 500
+  max_retries: 3
+  timeout_s: 120
+
+search:
+  elite_size: 4
+  max_consecutive_failures_per_lineage: 2
+  robustness_metric: mean_minus_std   # mean | min | mean_minus_std
+  phase_plan:                         # 见 PLAN.md §3.4
+    probe: 6
+    structural: 14
+    combine: 8
+
+evaluator:
+  mode: mock                          # mock | official
+  official_cmd: ""                    # 官方评估接口命令，待确认
+  cases: [bp_fe-ng45, bp-ng45, ariane133-ng45]
+  seeds: [1001, 1002, 1003]
+  overflow_threshold: 300
+
+gate:
+  whitelist_file: config/whitelist_partition_placement.yaml
+  # 新增行命中这些正则 -> 警告（不是错误）。写成词边界，避免误拦 model.eval() / evaluate_loss 之类合法代码。
+  # 真正的硬隔离靠白名单路径 + denied 列表。
+  forbidden_patterns:
+    - "\\bscoring\\b"
+    - "\\bcompute_score\\b"
+    - "\\bbudget\\b"
+    - "\\bmetrics?_extract"
+    - "\\bwns\\s*="
+    - "\\btns\\s*="
+  run_pyflakes: true
+  smoke_test_cmd: ""                  # 若官方允许离线小算例冒烟，填命令

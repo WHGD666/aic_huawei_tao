@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+results/**
+logs/**
+candidates/**
+!results/.gitkeep
+!logs/.gitkeep
+!candidates/.gitkeep
+baseline/**
+!baseline/.gitkeep
+*.log
+*.vhdx

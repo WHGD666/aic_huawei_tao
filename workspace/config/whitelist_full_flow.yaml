@@ -1,0 +1,16 @@
+# 任务二允许修改的文件白名单（相对 baseline/ 根目录）
+allowed:
+  - "partition/**/*.py"
+  - "placement/**/*.py"
+  - "hbt/**/*.py"
+  - "timing_opt/**/*.py"
+  - "cts/**/*.py"
+  - "routing/**/*.py"
+  - "config/*.yaml"
+  - "scripts/*.tcl"
+denied:
+  - "**/evaluate*"
+  - "**/metric*"
+  - "**/score*"
+  - "**/budget*"
+  - "**/pdn*"

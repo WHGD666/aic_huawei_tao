@@ -1,0 +1,13 @@
+# 任务一允许修改的文件白名单（相对 baseline/ 根目录）
+# 具体路径要等拿到官方基线后填写。glob 语法。
+allowed:
+  - "partition/**/*.py"
+  - "placement/**/*.py"
+  - "config/partition*.yaml"
+  - "config/place*.yaml"
+# 即使在 allowed 内也禁止动的
+denied:
+  - "**/evaluate*"
+  - "**/metric*"
+  - "**/score*"
+  - "**/budget*"

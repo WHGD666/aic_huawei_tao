@@ -1,0 +1,1 @@
+Combine phase: budget is nearly spent. Combine two independently-successful mechanisms from the history, or fine-tune a coefficient of the best candidate by a modest factor (x0.5 or x2). Do not introduce untested new mechanisms. Robustness across circuits is now more important than peak score.
