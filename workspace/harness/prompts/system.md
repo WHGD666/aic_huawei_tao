@@ -28,5 +28,7 @@ KEYWORDS: <comma-separated identifiers to look at next round>
 >>>
 (repeat EDIT blocks as needed; nothing else after the last >>>)
 
+{KNOWLEDGE}
+
 WHITELISTED FILES AND TOP-LEVEL SYMBOLS:
 {OUTLINE}

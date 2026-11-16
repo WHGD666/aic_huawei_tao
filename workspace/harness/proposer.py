@@ -68,7 +68,12 @@ class Proposer:
     def __init__(self, codebase: Codebase, task: str):
         self.cb = codebase
         self.task = task
-        self.system = _load("system.md").replace("{TASK}", task).replace("{OUTLINE}", codebase.outline())
+        self.system = (
+            _load("system.md")
+            .replace("{TASK}", task)
+            .replace("{KNOWLEDGE}", _load("knowledge.md") if (PROMPTS_DIR / "knowledge.md").exists() else "")
+            .replace("{OUTLINE}", codebase.outline())
+        )
 
     def build_messages(
         self,

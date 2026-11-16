@@ -129,6 +129,17 @@ def test_gate_blocks_denied_and_syntax(tmp_path):
     rep3b = g.check({"placement/place3d.py": "def f(model):\n    model.eval()\n    return model\n"}, "+    model.eval()\n")
     assert rep3b.ok and not rep3b.warnings
 
+    # Tcl / yaml / json 的语法门禁（full_flow 白名单含 tcl）
+    g2 = Gate(WS / "config" / "whitelist_full_flow.yaml", [], run_pyflakes=False)
+    bad_tcl = g2.check({"cts/cts.tcl": "proc f {} {\n  if {1} {\n    puts hi\n  \n}\n"}, "")
+    assert not bad_tcl.ok and any("tcl" in e for e in bad_tcl.errors)
+    ok_tcl = g2.check({"cts/cts.tcl": "# comment with {\nproc f {} {\n  set x [expr {1 + 2}]\n  puts \"\\{\"\n}\n"}, "")
+    assert ok_tcl.ok
+    bad_yaml = g2.check({"config/cts.yaml": "a: [1, 2\n"}, "")
+    assert not bad_yaml.ok and any("yaml" in e for e in bad_yaml.errors)
+    bad_json = g2.check({"config/grt.json": "{\"a\": 1,}"}, "")
+    assert not bad_json.ok and any("json" in e for e in bad_json.errors)
+
     p = parse_proposal(GOOD_PROPOSAL)
     changed, errs = apply_edits(FAKE, tmp_path / "w2", p.edits)
     rep4 = g.check(changed, git_diff(FAKE, tmp_path / "w2", list(changed)))

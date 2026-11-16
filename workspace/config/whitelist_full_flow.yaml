@@ -1,16 +1,23 @@
 # 任务二允许修改的文件白名单（相对 baseline/ 根目录）
+# 六环节：切分 / 布局 / HBT 分配 / 时序优化 / CTS / 全局布线。PDN 与评估固定。
 allowed:
   - "partition/**/*.py"
   - "placement/**/*.py"
   - "hbt/**/*.py"
+  - "terminal*/**/*.py"
   - "timing_opt/**/*.py"
+  - "rsz/**/*.py"
   - "cts/**/*.py"
   - "routing/**/*.py"
+  - "grt/**/*.py"
+  - "**/*.tcl"
   - "config/*.yaml"
-  - "scripts/*.tcl"
+  - "config/*.json"
 denied:
   - "**/evaluate*"
   - "**/metric*"
   - "**/score*"
   - "**/budget*"
   - "**/pdn*"
+  - "**/sta_report*"
+  - "**/read_inputs*"

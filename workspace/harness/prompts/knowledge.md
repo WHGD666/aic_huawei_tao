@@ -1,0 +1,8 @@
+DOMAIN KNOWLEDGE (condensed; mechanisms, not recipes):
+- Flow: partition (GNN tier assignment) -> bistratal analytical placement + legalization -> PDN (fixed) -> HBT cross-tier terminal assignment -> timing repair (resize/buffer/pin-swap/clone) -> [full_flow: CTS -> global routing] -> STA.
+- Task partition_placement is scored right after ONE fixed timing-repair pass using placement-estimated parasitics and ideal clocks. You cannot change the repair itself; you can only make its job easier: (a) keep critical paths short (same tier & close, or vertical via HBT), (b) leave room for buffers (density/padding), (c) avoid long cross-tier detours.
+- Task full_flow is scored after global routing with propagated clocks; total overflow (sum of both tiers) above 300 is penalized without cap -> treat overflow <= 300 as a hard constraint.
+- Levers that generalize: slack-driven net weights in placement; timing-criticality features / critical-net cut penalties in partition; cross-tier-net wirelength model that pulls both tier projections together; balance-repair that flips low-degree / non-critical cells; density target that trades wirelength vs buffer space.
+- Legality killers (candidate becomes INVALID): overlaps, off-row/off-site cells, out-of-boundary, HBT min-pitch violation, broken cross-tier connectivity, missing metrics, exceptions, timeouts.
+- Cross-PDK traps: ng45 uses metal1..metal10 with ns Liberty units; asap7 uses M1..M9 with ps units and different DEF units/row height. Never hard-code layer names, units, row heights, or circuit names; read them from LEF/DEF/config.
+- Budget: 30 evaluations total; each is 9 full flows. Prefer one attributable change per candidate; prefer TNS (60% weight) over chasing a single worst path.

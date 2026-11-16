@@ -17,7 +17,9 @@ workspace/
 │   ├── proposer.py + prompts/ 提示词组织、SEARCH/REPLACE 解析
 │   ├── codebase.py           白名单代码索引、函数级分块、片段检索、补丁生成
 │   ├── gate.py               免费本地门禁（路径/禁改/语法/未定义名/冒烟）
-│   ├── evaluator.py          Mock 评估器 + 官方评估接口适配器（待接）
+│   ├── evaluator.py          Mock 评估器 + 官方 JSON 接口适配器 + LogDirEvaluator（直接吃原始日志目录）
+│   ├── openroad_parse.py     OpenROAD/OpenSTA 报告解析：wns/tns、关键路径块、GRT 拥塞表、repair 统计、失败探测、ps→ns
+│   ├── profile.py            评估日志 → "问题画像"（slack 直方图、top 路径、跨层比例、缓冲器统计）给 Proposer
 │   ├── scoring.py            题面第六节计分公式
 │   ├── analyzer.py           评估结果 → 规则摘要 → （可选）LLM 解读
 │   ├── selector.py           精英集、稳健性指标、父代采样、阶段推进
@@ -41,7 +43,7 @@ conda activate F:\huawei_aic_tao\task1\env\conda\tao
 cd /d F:\huawei_aic_tao\task1\workspace
 python tools\check_env.py --net          :: 全绿 + deepseek /models 可达
 python tools\probe_models.py             :: 看模型名，填回 .env 的 DEEPSEEK_MODEL
-python -m pytest tests -q                :: 15 个测试应全部通过
+python -m pytest tests -q                :: 25 个测试应全部通过
 ```
 
 ## 跑演化循环
@@ -60,7 +62,10 @@ run.bat full_flow
 
 Linux / 官方容器内：`./run.sh partition_placement`。
 
-接入官方评估接口：把 `config/harness.yaml` 的 `evaluator.mode` 改为 `official`，填 `official_cmd`（支持 `{workdir}` `{out}` 占位），并把官方基线结果存到 `baseline/baseline_eval.json`；格式见 `harness/evaluator.py::OfficialEvaluator`。
+接入官方评估接口（二选一，改 `config/harness.yaml` 的 `evaluator.mode`）：
+- `official`：官方接口返回指标 JSON → 填 `official_cmd`（支持 `{workdir}` `{out}` 占位），基线结果存 `baseline/baseline_eval.json`；格式见 `harness/evaluator.py::OfficialEvaluator`
+- `logdir`：官方接口只留下每个 `<case>/<seed>/` 的原始日志与报告 → `LogDirEvaluator` 用 `openroad_parse.py` 自己提取；基线日志放 `baseline/results/<task>/`
+拿到真实日志后，把它们放进 `tests/samples/` 替换手写样例，保证 `tests/test_parse.py` 仍然通过。
 
 ## 产物与提交对应关系
 

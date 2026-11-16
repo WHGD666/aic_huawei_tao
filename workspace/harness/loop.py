@@ -88,6 +88,11 @@ class Harness:
         e = cfg["evaluator"]
         if e["mode"] == "mock":
             self.evaluator: Evaluator = MockEvaluator(e["cases"], e["seeds"], full_flow=self.full_flow)
+        elif e["mode"] == "logdir":
+            from .evaluator import LogDirEvaluator
+            self.evaluator = LogDirEvaluator(e["cases"], e["seeds"], e["official_cmd"],
+                                             WS / "results" / self.task, WS / "baseline" / "results" / self.task,
+                                             full_flow=self.full_flow)
         else:
             self.evaluator = OfficialEvaluator(e["cases"], e["seeds"], e["official_cmd"], WS / "baseline" / "baseline_eval.json")
 
@@ -121,19 +126,34 @@ class Harness:
     # ---------- init ----------
     def init_baseline(self) -> None:
         self.baseline_eval = self.evaluator.baseline()
-        self.store.save_eval("baseline", self.baseline_eval.to_dict()) if (self.store.root / "baseline").mkdir(exist_ok=True) is None else None
-        # 问题画像：先用规则（真实流程里会解析 STA 报告的关键路径 / 跨层网统计）
-        lines = ["Baseline violations (negative slack, ns) per case (avg over seeds):"]
-        by_case: Dict[str, List] = {}
-        for k, r in self.baseline_eval.runs.items():
-            by_case.setdefault(r.case, []).append(r)
-        for c, rs in by_case.items():
-            w = sum(r.wns for r in rs) / len(rs)
-            t = sum(r.tns for r in rs) / len(rs)
-            ov = sum(r.overflow for r in rs) / len(rs)
-            lines.append(f"  {c}: WNS={w:.3f} TNS={t:.1f} overflow={ov:.0f}")
-        lines.append("Notes: TNS weight 0.6; prefer mechanisms that generalize across all three cases.")
-        self.profile = "\n".join(lines)
+        (self.store.root / "baseline").mkdir(exist_ok=True)
+        self.store.save_eval("baseline", self.baseline_eval.to_dict())
+        # 问题画像：若评估器带了解析好的 profiles（LogDirEvaluator），用 profile.render_profile；否则退化为指标摘要
+        profs = self.baseline_eval.raw.get("profiles") if isinstance(self.baseline_eval.raw, dict) else None
+        if profs:
+            from .profile import RunProfile, render_profile
+            rps = []
+            for d in profs.values():
+                rp = RunProfile(d["case"], d["seed"], d.get("wns_ns"), d.get("tns_ns"), d.get("time_unit", "ns"),
+                                d.get("n_paths", 0), d.get("slack_hist", {}))
+                rp.cross_tier_ratio = d.get("cross_tier_ratio", 0.0)
+                rp.avg_wire_ratio = d.get("avg_wire_ratio", 0.0)
+                rp.avg_stages = d.get("avg_stages", 0.0)
+                rp.partition_stats = d.get("partition_stats", {})
+                rps.append(rp)
+            self.profile = render_profile(rps)
+        else:
+            lines = ["Baseline violations (negative slack, ns) per case (avg over seeds):"]
+            by_case: Dict[str, List] = {}
+            for k, r in self.baseline_eval.runs.items():
+                by_case.setdefault(r.case, []).append(r)
+            for c, rs in by_case.items():
+                w = sum(r.wns for r in rs) / len(rs)
+                t = sum(r.tns for r in rs) / len(rs)
+                ov = sum(r.overflow for r in rs) / len(rs)
+                lines.append(f"  {c}: WNS={w:.3f} TNS={t:.1f} overflow={ov:.0f}")
+            lines.append("Notes: TNS weight 0.6; prefer mechanisms that generalize across all three cases.")
+            self.profile = "\n".join(lines)
         self.log("baseline loaded\n" + self.profile)
 
     # ---------- one round ----------

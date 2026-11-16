@@ -157,3 +157,76 @@ class OfficialEvaluator(Evaluator):
                                    fail_reason=str(r.get("fail_reason", "")))
             logs[key] = str(r.get("log", ""))
         return EvalResult(cid, runs, logs, raw=d)
+
+
+# ---------------------------------------------------------------------------
+class LogDirEvaluator(Evaluator):
+    """
+    备用适配器：官方接口若只留下"每个 case/seed 一个目录的原始日志/报告"，用 openroad_parse 直接提取指标。
+    约定目录布局（可用 layout 参数改）：
+        <root>/<case>/<seed>/{sta.rpt|*.rpt, repair.log, grt.log, partition.log, flow.log}
+    从日志推断 valid / fail_reason；wns/tns 自动按 Liberty 单位换算成 ns。
+    """
+
+    def __init__(self, cases, seeds, cmd: str, results_root: Path, baseline_root: Optional[Path] = None,
+                 full_flow: bool = False):
+        super().__init__(cases, seeds)
+        self.cmd = cmd
+        self.results_root = results_root
+        self.baseline_root = baseline_root
+        self.full_flow = full_flow
+
+    def baseline(self) -> EvalResult:
+        if not self.baseline_root or not self.baseline_root.exists():
+            raise RuntimeError("baseline results root not found; run the official baseline once")
+        return self._collect("baseline", self.baseline_root)
+
+    def evaluate(self, candidate_id: str, workdir: Path) -> EvalResult:
+        t0 = time.time()
+        out_root = self.results_root / candidate_id
+        subprocess.run(self.cmd.format(workdir=str(workdir), out=str(out_root)), shell=True, check=False)
+        res = self._collect(candidate_id, out_root)
+        res.wall_s = time.time() - t0
+        return res
+
+    def _collect(self, cid: str, root: Path) -> EvalResult:
+        from .openroad_parse import detect_time_unit, parse_congestion, parse_stage_status, parse_wns_tns, to_ns
+        from .profile import build_run_profile
+
+        runs, logs, profiles = {}, {}, {}
+        for c in self.cases:
+            for s in self.seeds:
+                d = root / c / str(s)
+                key = f"{c}/{s}"
+                if not d.exists():
+                    runs[key] = RunMetrics(c, s, 0, 0, valid=False, fail_reason="missing result dir")
+                    continue
+                sta = _read_any(d, ["sta.rpt", "timing.rpt", "*.rpt"])
+                flow = _read_any(d, ["flow.log", "*.log"])
+                rep = _read_any(d, ["repair.log", "rsz.log"])
+                grt = _read_any(d, ["grt.log", "route.log"])
+                part = _read_any(d, ["partition.log", "partition.txt", "partition.json"])
+                status = parse_stage_status(flow + "\n" + sta)
+                unit = detect_time_unit(sta + "\n" + c)
+                wns, tns = parse_wns_tns(sta)
+                ov = 0.0
+                if self.full_flow:
+                    cg = parse_congestion(grt)
+                    ov = cg.total_overflow if cg else float("nan")
+                valid = status.ok and wns is not None and tns is not None and not (self.full_flow and ov != ov)
+                reason = status.fail_reason or ("missing wns/tns" if (wns is None or tns is None) else "") or ("missing overflow" if (self.full_flow and ov != ov) else "")
+                runs[key] = RunMetrics(c, s, to_ns(wns, unit) or 0.0, to_ns(tns, unit) or 0.0,
+                                       overflow=0.0 if ov != ov else ov, valid=valid, fail_reason=reason)
+                logs[key] = (flow or sta)[-1500:]
+                profiles[key] = build_run_profile(c, s, sta, rep, grt, part).to_dict()
+        return EvalResult(cid, runs, logs, raw={"profiles": profiles})
+
+
+def _read_any(d: Path, patterns: List[str]) -> str:
+    for pat in patterns:
+        for p in sorted(d.glob(pat)):
+            try:
+                return p.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+    return ""

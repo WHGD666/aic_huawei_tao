@@ -1,7 +1,10 @@
 # 赛题 1 总体规划 —— 面向 3D 芯片物理设计的多阶段算法协同演化
 
-> 版本 v0.1 · 2026-11-17 · 状态：**准备阶段，等待官方容器与基线代码**
+> 版本 v0.2 · 2026-11-17 · 状态：**准备阶段，等待官方容器与基线代码**
 > 本文件是项目的"总控文档"：题目理解、策略、harness 设计、环境、目录、里程碑、风险、待确认事项。后续所有改动以此为准并持续更新。
+>
+> 配套文档：`docs/openroad_reference.md`（六环节 ↔ OpenROAD 命令/参数/指标/跨 PDK 陷阱）、`docs/knob_catalog.md`（演化旋钮目录与探针顺序）、`docs/submission_checklist.md`（提交清单）、`workspace/README.md`（怎么跑）。
+> GitHub：https://github.com/WHGD666/aic_huawei_tao （根目录 `git_sync.bat` 推送）
 
 ---
 
@@ -171,14 +174,21 @@ final: 导出最佳候选 candidate.patch + results/ + logs/ (父子关系图)
 
 ### 4.2 我这边的沙箱（Linux）
 
-Ubuntu 22.04 / Python 3.10 / 无 torch / 无 GPU / 3.9 GB 空间 / **无外网（pypi、github、deepseek 全被拦）**。
-→ 只能用来写代码、跑纯 Python 单元测试（mock 模式）。所有安装、API 调用、EDA 流程都要在你的 Windows 上跑，我会把命令写成脚本给你执行。
+Ubuntu 22.04 / Python 3.10 / 无 torch / 无 GPU / 3.9 GB 空间 / **无外网**——以下域名全部被拦：`api.deepseek.com`、`openroad.readthedocs.io`、`github.com`、`raw.githubusercontent.com`、`pypi.org`。
+→ 只能用来写代码、跑纯 Python 单元测试（mock 模式）。所有安装、API 调用、git push、EDA 流程都要在你的 Windows 上跑，我会把命令写成脚本给你执行。
+→ 如果你希望我能直接查文档 / 调 API，需要在 Claude 应用的 Setup → Inference configuration → Capabilities → General restrictions → Allowed egress hosts 里加上述域名并重启应用。
 
-### 4.3 DeepSeek API
+### 4.3 DeepSeek API（官方直连，非中转）
 
-- 你提供的 key 已写入 `F:\huawei_aic_tao\task1\workspace\.env`（已 gitignore，**不会**进入任何日志、记忆或提交物）
-- 公开 API 的模型名我已知的是 `deepseek-chat` / `deepseek-reasoner`；题面要求的 `DeepSeek-V4.1-Flash` 具体名称与单价我无法联网核实 → `tools/probe_models.py` 会列出你账号可见的模型名；单价填进 `config/pricing.yaml`
-- 开发预算 10 元，分配见 3.5
+- 你提供的 key 已写入 `F:\huawei_aic_tao\task1\workspace\.env`（已 gitignore，**不会**进入任何日志、记忆或提交物；`git_sync.bat` 推送前会再查一次）
+- 我无法联网核实 `DeepSeek-V4.1-Flash` 在公开 API 里的模型 ID 和单价 → 你本机跑 `tools/probe_models.py` 列出账号可见的模型名，把对应的填进 `.env` 的 `DEEPSEEK_MODEL`，单价填进 `config/pricing.yaml`
+- 开发预算 10 元，分配见 3.5；`budget.json` 会实时记账
+
+### 4.4 Git 工作流
+
+- 仓库根 = `F:\huawei_aic_tao\task1`，远端 `origin = https://github.com/WHGD666/aic_huawei_tao.git`，分支 `main`
+- 我在沙箱里 commit（无法 push）；你在本机双击 `git_sync.bat "说明"` 完成 add/commit/pull --rebase/push
+- 不入库：`env/`、`third_party/`、`workspace/.env`、`workspace/{logs,results,candidates,baseline}/`（都在根 `.gitignore`）。最终用于提交的 logs/results 由人工挑一份放进 `submission/` 再入库
 
 ---
 
@@ -265,9 +275,18 @@ F:\huawei_aic_tao\task1\
 
 ---
 
-## 9. 本轮已完成
+## 9. 进度记录
 
-- 赛题 md / pdf / zip 全文精读，三份一致
-- 本机 D 盘环境盘点：anaconda + 两个带 torch 的 env、Docker Desktop (WSL2)、NVIDIA 驱动痕迹
-- 沙箱能力确认：无网、无 torch，只做代码与 mock 测试
-- 本文件 + `workspace/` 骨架 + env 脚本 + 零依赖 LLM 客户端 + mock 评估器 + 单元测试
+### 2026-11-17 · M0 完成
+- 赛题 md / pdf / zip 全文精读，三份一致；独立 agent 对照原文复核规划并修正 6 处错误
+- 本机 D 盘环境盘点：anaconda + 两个带 torch 的 env、Docker Desktop (WSL2)、NVIDIA 驱动痕迹；沙箱无网无 torch
+- `workspace/`：harness 骨架（loop / proposer / gate / evaluator / scoring / selector / store / budget / llm）+ mock 评估器 + fake baseline
+- `harness/openroad_parse.py` + `profile.py`：OpenROAD 报告解析（wns/tns、关键路径块、GRT 拥塞表、repair 统计、失败探测、ps→ns）与问题画像；`LogDirEvaluator` 可直接吃原始日志目录
+- `harness/prompts/knowledge.md`：注入系统提示的领域知识块
+- `docs/`：OpenROAD 参考、旋钮目录、提交清单
+- 25 个测试全绿；git 仓库根建在项目根，已配远端
+
+### 下一步（按优先级）
+1. 你本机：建 conda 环境 → `probe_models.py` 确认模型名 → Docker 磁盘迁 F → `git_sync.bat`
+2. 拿到官方容器：跑通 1 算例 1 种子，用真实日志替换 `tests/samples/`，校正解析器与 `docs/openroad_reference.md` 勘误表
+3. 填真实白名单路径，接评估接口（`official` 或 `logdir` 模式），M4 小预算真跑

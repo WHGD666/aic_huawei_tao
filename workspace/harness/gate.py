@@ -25,6 +25,38 @@ import yaml
 from .codebase import match_any
 
 
+def _tcl_brace_check(src: str) -> str:
+    """极简 Tcl 检查：忽略注释行与 \\{ \\} 转义后，{} 与 [] 必须配平。返回错误描述或空串。"""
+    depth_b = depth_s = 0
+    for ln_no, line in enumerate(src.splitlines(), 1):
+        s = line.lstrip()
+        if s.startswith("#"):
+            continue
+        prev = ""
+        for ch in line:
+            if prev == "\\":
+                prev = ""
+                continue
+            if ch == "{":
+                depth_b += 1
+            elif ch == "}":
+                depth_b -= 1
+                if depth_b < 0:
+                    return f"unexpected '}}' at line {ln_no}"
+            elif ch == "[":
+                depth_s += 1
+            elif ch == "]":
+                depth_s -= 1
+                if depth_s < 0:
+                    return f"unexpected ']' at line {ln_no}"
+            prev = ch
+    if depth_b:
+        return f"unbalanced braces: {depth_b} unclosed '{{'"
+    if depth_s:
+        return f"unbalanced brackets: {depth_s} unclosed '['"
+    return ""
+
+
 def _undefined_names(src: str):
     """极简未定义名检查（pyflakes 不可用时的兜底）：模块级 + 函数级作用域，忽略属性/关键字参数。"""
     import ast
@@ -130,17 +162,31 @@ class Gate:
 
     def _check_syntax(self, files: Dict[str, str], rep: GateReport) -> None:
         for f, content in files.items():
-            if not f.endswith(".py"):
-                continue
-            with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as tf:
-                tf.write(content)
-                tmp = tf.name
-            try:
-                py_compile.compile(tmp, doraise=True)
-            except py_compile.PyCompileError as e:
-                rep.errors.append(f"syntax error in {f}: {e.msg.splitlines()[-1] if e.msg else e}")
-            finally:
-                Path(tmp).unlink(missing_ok=True)
+            if f.endswith(".py"):
+                with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as tf:
+                    tf.write(content)
+                    tmp = tf.name
+                try:
+                    py_compile.compile(tmp, doraise=True)
+                except py_compile.PyCompileError as e:
+                    rep.errors.append(f"syntax error in {f}: {e.msg.splitlines()[-1] if e.msg else e}")
+                finally:
+                    Path(tmp).unlink(missing_ok=True)
+            elif f.endswith(".tcl"):
+                err = _tcl_brace_check(content)
+                if err:
+                    rep.errors.append(f"tcl syntax in {f}: {err}")
+            elif f.endswith((".yaml", ".yml")):
+                try:
+                    yaml.safe_load(content)
+                except yaml.YAMLError as e:
+                    rep.errors.append(f"yaml error in {f}: {str(e).splitlines()[0]}")
+            elif f.endswith(".json"):
+                import json
+                try:
+                    json.loads(content)
+                except json.JSONDecodeError as e:
+                    rep.errors.append(f"json error in {f}: {e}")
 
     def _check_pyflakes(self, files: Dict[str, str], rep: GateReport) -> None:
         try:

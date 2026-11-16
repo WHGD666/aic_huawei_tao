@@ -1,0 +1,65 @@
+OpenROAD v2.0-12345
+[INFO ODB-0227] LEF file: Nangate45_tech.lef, created 22 layers, 27 vias
+Startpoint: u_core/pc_reg[3]$_DFF_P_ (rising edge-triggered flip-flop clocked by core_clk)
+Endpoint: u_core/icache/tag_ram_q_reg[12] (rising edge-triggered flip-flop clocked by core_clk)
+Path Group: core_clk
+Path Type: max
+
+  Delay    Time   Description
+---------------------------------------------------------
+   0.00    0.00   clock core_clk (rise edge)
+   0.00    0.00   clock network delay (ideal)
+   0.00    0.00 ^ u_core/pc_reg[3]$_DFF_P_/CK (DFF_X1)
+   0.12    0.12 v u_core/pc_reg[3]$_DFF_P_/Q (DFF_X1)
+   0.03    0.15   pc[3] (net)
+   0.08    0.23 v u_core/add_1/ZN (NAND2_X1)
+   0.21    0.44   hbt_n_0412 (net)
+   0.09    0.53 ^ u_core/icache/mux_7/Z (MUX2_X1)
+   0.02    0.55   n_7781 (net)
+   0.00    0.55 v u_core/icache/tag_ram_q_reg[12]/D (DFF_X1)
+           0.55   data arrival time
+
+   1.00    1.00   clock core_clk (rise edge)
+   0.00    1.00   clock network delay (ideal)
+   0.00    1.00   clock reconvergence pessimism
+           1.00 ^ u_core/icache/tag_ram_q_reg[12]/CK (DFF_X1)
+  -0.04    0.96   library setup time
+           0.96   data required time
+---------------------------------------------------------
+           0.96   data required time
+          -0.55   data arrival time
+---------------------------------------------------------
+           0.41   slack (MET)
+
+
+Startpoint: u_fe/fetch_q_reg[7] (rising edge-triggered flip-flop clocked by core_clk)
+Endpoint: u_fe/btb/ram_reg[511] (rising edge-triggered flip-flop clocked by core_clk)
+Path Group: core_clk
+Path Type: max
+
+  Delay    Time   Description
+---------------------------------------------------------
+   0.00    0.00   clock core_clk (rise edge)
+   0.00    0.00   clock network delay (ideal)
+   0.00    0.00 ^ u_fe/fetch_q_reg[7]/CK (DFF_X1)
+   0.15    0.15 v u_fe/fetch_q_reg[7]/Q (DFF_X1)
+   0.31    0.46   fetch_q[7] (net)
+   0.11    0.57 v u_fe/dec/a1/ZN (AND2_X1)
+   0.44    1.01   long_n_0099 (net)
+   0.10    1.11 ^ u_fe/dec/a2/ZN (OR2_X1)
+   0.05    1.16   n_1 (net)
+   0.00    1.16 v u_fe/btb/ram_reg[511]/D (DFF_X1)
+           1.16   data arrival time
+
+   1.00    1.00   clock core_clk (rise edge)
+   0.00    1.00   clock network delay (ideal)
+  -0.04    0.96   library setup time
+           0.96   data required time
+---------------------------------------------------------
+           0.96   data required time
+          -1.16   data arrival time
+---------------------------------------------------------
+          -0.20   slack (VIOLATED)
+
+wns -0.350
+tns -120.450
