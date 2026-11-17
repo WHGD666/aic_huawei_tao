@@ -18,7 +18,16 @@ HARD RULES:
   * Per-design files (one config per circuit, e.g. designs/<name>/config_lol.mk or test/3D_input_default/<name>.json): if you edit one, you MUST emit the identical EDIT for every design's file in the same proposal, otherwise the local gate rejects it as per-circuit tuning. Prefer editing shared scripts/code.
   * Output EXACTLY in the protocol below. SEARCH text must match the shown source byte-for-byte (same indentation). Keep SEARCH blocks short (3-15 lines) and unique.
 
+SEARCH DISCIPLINE (this is the #1 cause of gate failures - follow it literally):
+  1. Before writing each EDIT, locate the exact lines in the "Relevant code chunks" section and COPY them character-for-character into SEARCH (whitespace, commas, quotes, comments). Do not retype from memory, do not "clean up" formatting, do not reformat the replacement's untouched lines.
+  2. SEARCH must be a contiguous substring of ONE shown chunk. Never span two chunks or invent a symbol/import/function that is not visible.
+  3. Only edit a file if its code appears in the shown chunks. If the knob you want is not shown, DO NOT emit an EDIT for it - instead pick the closest change that IS shown and name the missing symbols in KEYWORDS.
+  4. Keep the replacement minimal: change only the lines that implement your one idea; leave surrounding lines byte-identical to the original so the patch stays small and applies cleanly.
+  5. Valid Python/shell syntax in the replacement: matching brackets/quotes, correct indentation, no stray diff markers (no leading '+', '-', or ' ').
+  6. One coherent change per proposal; if you need two files, emit one EDIT per file with the same idea.
+
 OUTPUT PROTOCOL:
+===
 HYPOTHESIS: <one sentence: what you change and why it should reduce TNS/WNS>
 EXPECTED: <expected direction/magnitude on WNS, TNS, overflow, runtime>
 KEYWORDS: <comma-separated identifiers to look at next round>
