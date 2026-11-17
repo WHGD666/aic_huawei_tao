@@ -43,7 +43,7 @@ conda activate F:\huawei_aic_tao\task1\env\conda\tao
 cd /d F:\huawei_aic_tao\task1\workspace
 python tools\check_env.py --net          :: 全绿 + deepseek /models 可达
 python tools\probe_models.py             :: 看模型名，填回 .env 的 DEEPSEEK_MODEL
-python -m pytest tests -q                :: 32 个测试应全部通过（无 pytest 时: python tests\_runner_nopytest.py tests.test_units tests.test_parse tests.test_e2e tests.test_logdir_eval）
+python -m pytest tests -q                :: 44 个测试应全部通过（无 pytest 时: python tests\_runner_nopytest.py tests.test_units tests.test_parse tests.test_e2e tests.test_logdir_eval）
 ```
 
 ## 跑演化循环
@@ -62,7 +62,9 @@ run.bat full_flow --max-evaluations 30 --max-cost 15
 python tools\report.py logs\my_run -o logs\my_run\report.md
 ```
 
-彩排样例：`logs/rehearsal/R30_pp_mock/`（真实 deepseek-flash × 真实 Open3DBench 代码 × mock 评估，28 次评估 0.19 元），报告见 `../docs/rehearsal_report_R30_mock.md`。
+彩排样例：`logs/rehearsal/R30_pp_mock/`（任务一，真实 deepseek-flash × 真实 Open3DBench 代码 × mock 评估，30/30 次评估 0.17 元）、`logs/rehearsal/FF10_mock/`（全流程 10 次评估）；报告见 `../docs/rehearsal_report_R30_mock.md`。
+
+接真实流程：`tools/evaluate_open3dbench.py`（在 open3dbench:eval 容器里）可作为 `--evaluator logdir --official-cmd "python3 tools/evaluate_open3dbench.py --workdir {workdir} --out {out} --task partition_placement --placer-cmd '...'"` 的实现；`--dry-run` 可在无容器时检查命令拼装。
 
 Linux / 官方容器内：`./run.sh partition_placement`。
 

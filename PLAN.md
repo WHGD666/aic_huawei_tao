@@ -1,9 +1,9 @@
 # 赛题 1 总体规划 —— 面向 3D 芯片物理设计的多阶段算法协同演化
 
-> 版本 v0.4 · 2026-11-17 · 状态：**harness 在真实代码上完成 30 轮彩排；等待官方容器与基准数据**
+> 版本 v0.5 · 2026-11-18 · 状态：**审核清单 23 项修复完毕；30/30 评估彩排、full_flow 彩排、评估适配器、技术报告骨架就绪；等待官方容器与基准数据**
 > 本文件是项目的"总控文档"：题目理解、策略、harness 设计、环境、目录、里程碑、风险、待确认事项。后续所有改动以此为准并持续更新。
 >
-> 配套文档：**`docs/open3dbench_notes.md`（真实平台结构、评估流程、输入输出契约 —— 先读这个）**、`docs/openroad_reference.md`（六环节 ↔ OpenROAD 命令/参数，§10 勘误表已按源码校正）、`docs/knob_catalog.md`（演化旋钮目录）、`docs/submission_checklist.md`（提交清单）、`workspace/README.md`（怎么跑）。
+> 配套文档：**`docs/open3dbench_notes.md`（真实平台结构、评估流程、输入输出契约 —— 先读这个）**、`docs/tech_report.md`（技术报告骨架，附录六节）、`docs/harness_review_todo.md`（审核清单与修复说明）、`docs/openroad_reference.md`、`docs/knob_catalog.md`、`docs/submission_checklist.md`、`workspace/README.md`。
 > GitHub：https://github.com/WHGD666/aic_huawei_tao （根目录 `git_sync.bat` 推送）
 
 ---
@@ -317,8 +317,15 @@ F:\huawei_aic_tao\task1\
 - `third_party/Open3DBench/`（319 MB，不入库）：完整流程代码 + 平台 LEF/LIB + 网表；**基准 DEF/布局输入不在 git**，需从 Place-LoL/README.md 的 Google Drive 链接下载 `binaries.tar.gz`（沙箱不可达，要你本机下）
 - `env/07_run_lol_bpfe.bat` + `tools/collect_m2.py`：一键跑 bp_fe 评估并回收真实日志/json 校正解析器
 
+### 2026-11-18 · 审核修复 + 两项任务彩排 + 评估适配器
+- `docs/harness_review_todo.md` 23 项全部修复（#14 待官方接口）：reserve 真正用于 final 阶段、父代 patch 重建工作副本（评估器产物不再被继承）、非 mock 空命令 fail-fast、difflib 兜底、gate_failed 不拉黑父代、hunk 指纹去重、候选拿到 id 即落盘、连续门禁失败上限、**算例名/PDK 分支门禁 + per_design 一致性**、fail_streak 续跑恢复、`code_version`
+- 修复后彩排（任务一，真实 LLM × 真实代码 × mock）：**30/30 评估用满、31 轮仅 1 次门禁拦截、0.17 元**（修复前 28/30、9 次拦截）；full_flow 10 评估彩排：模型会改 cts.tcl / global_route.tcl / config_lol.mk，per_design 一致性门禁生效
+- `tools/evaluate_open3dbench.py`：候选 → Open3DBench 真实流程（任务一截断在 3_4_place_resized，可选追加 repair_timing；任务二到 5_1_grt），输出 LogDirEvaluator 布局，dry-run 通过
+- `docs/tech_report.md` 骨架（附录六节），已填 harness 设计、彩排、审核；实验表留 `【待官方运行】`
+- 44 测试全绿
+
 ### 下一步（按优先级）
-1. 你本机：`05_pull_open3dbench.bat` → 下载 `binaries.tar.gz` 解压到 `third_party\Open3DBench\Place-LoL\binaries\` → `07_run_lol_bpfe.bat` → `python tools\collect_m2.py`（M2：真实耗时 + 真实 json key）
+1. 你本机：`05_pull_open3dbench.bat` → 下载 `binaries.tar.gz` 解压到 `third_party\Open3DBench\Place-LoL\binaries\` → `07_run_lol_bpfe.bat` → `python tools\collect_m2.py`（M2：真实耗时 + 真实 json key）；随后可用 `tools/evaluate_open3dbench.py --inplace --method tcad25` 对基线跑一次任务一截断流程验证适配器
 2. 向组委会问 §8 第 2、9 条（"一次时序优化"是 repair_design 还是 repair_timing；Makefile 变量是否可改）
-3. 拿到官方容器：对照 `docs/open3dbench_notes.md` §2 差异表，填真实白名单，接评估接口，M4 小预算真跑
-4. 决赛向：harness 自演化（让智能体改 prompts/ 与 selector 参数，用 mock 评估离线做消融）
+3. 拿到官方容器：对照 `docs/open3dbench_notes.md` §2 差异表，填真实白名单，接评估接口（`--evaluator logdir --official-cmd ...`），M4 小预算真跑
+4. 决赛向：harness 自演化（让智能体改 prompts/ 与 selector 参数，用 mock 评估离线做消融）；§3.4 消融表
