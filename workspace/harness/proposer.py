@@ -26,7 +26,7 @@ from .codebase import Codebase, Edit
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 EDIT_RE = re.compile(
-    r"<<<EDIT\s+file=(?P<file>[^\n]+?)\s*\n<<<SEARCH\s*\n(?P<search>.*?)\n===+\s*\n(?P<replace>.*?)\n>>>\s*(?:\n>>>)?",
+    r"<<<EDIT\s+file=(?P<file>[^\n]+?)\s*\n<<<SEARCH[ \t]*\n(?P<search>.*?)\n===[ \t]*\n(?P<replace>.*?)\n>>>[ \t]*(?:\n>>>[ \t]*)?(?=\n|$)",
     re.DOTALL,
 )
 # 宽松版：模型常见错误 —— 用 ``` 包住、漏掉第二个 >>>、=== 后带空格、file= 带引号/反引号
@@ -95,16 +95,33 @@ class Proposer:
             .replace("{OUTLINE}", codebase.outline())
         )
 
-    def precheck(self, prop: Proposal) -> List[str]:
-        """免费的本地预检：SEARCH 必须出现在本轮展示过的代码片段里（否则多半是模型凭记忆编的）。"""
+    def precheck(self, prop: Proposal, chunks=None) -> List[str]:
+        """免费的本地预检：SEARCH 必须出现在本轮展示过的代码片段里（否则多半是模型凭记忆编的）。
+        chunks 显式传入（build_messages 的返回值）；不传则用 last_chunks。"""
         errs = []
-        shown = {c.file: c.source for c in self.last_chunks}
+        chunks = self.last_chunks if chunks is None else chunks
         by_file: Dict[str, str] = {}
-        for c in self.last_chunks:
+        for c in chunks:
             by_file[c.file] = by_file.get(c.file, "") + "\n" + c.source
         for e in prop.edits:
+            if e.file.startswith(("/", "\\")) or ".." in e.file.split("/") or ":" in e.file[:3]:
+                errs.append(f"{e.file}: illegal path (absolute or parent traversal)")
+                continue
+            # "必须来自展示过的代码"是为了拦住凭记忆编造的 SEARCH。若 SEARCH 逐字存在于**当前真实代码**（含父代改动），
+            # 即使该片段这轮没展示，也证明不是编造 —— 放行。只有既没展示又不在真实代码里的才拒绝。
+            if e.file in self.cb.files:
+                try:
+                    real = self.cb.read(e.file)
+                except OSError:
+                    real = ""
+                if e.search and real.count(e.search) == 1:
+                    continue
             if e.file not in by_file:
-                errs.append(f"{e.file}: this file was NOT shown in the code chunks; you may only edit shown code. Shown files: {sorted(by_file)}")
+                if e.file in self.cb.files:
+                    errs.append(f"{e.file}: SEARCH block not found in the current file (it may have been changed by the parent candidate); "
+                                f"this file was not shown this round — list its symbols in KEYWORDS or edit the shown chunks instead")
+                else:
+                    errs.append(f"{e.file}: this file was NOT shown in the code chunks and is not an editable file; shown files: {sorted(by_file)}")
             elif e.search not in by_file[e.file]:
                 # 给一点线索：找相似的首行
                 first = e.search.strip().splitlines()[0].strip() if e.search.strip() else ""
@@ -127,7 +144,8 @@ class Proposer:
         previous_response: Optional[str] = None,
         code_chars: int = 6000,
         boost_lines: Optional[Dict[str, List[int]]] = None,
-    ) -> List[Dict[str, str]]:
+    ):
+        """返回 (messages, shown_chunks)。shown_chunks 要原样传给 precheck。"""
         chunks = self.cb.search(focus_keywords, k=6, max_chars=code_chars, boost_lines=boost_lines)
         self.last_chunks = chunks
         code = self.cb.render(chunks) if chunks else "(no matching code chunks; ask for other keywords)"
@@ -146,4 +164,4 @@ class Proposer:
         if feedback_for_fix and previous_response:
             msgs.append({"role": "assistant", "content": previous_response})
             msgs.append({"role": "user", "content": _load("fix.md").replace("{FEEDBACK}", feedback_for_fix)})
-        return msgs
+        return msgs, chunks

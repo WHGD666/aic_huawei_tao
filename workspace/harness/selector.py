@@ -34,10 +34,25 @@ class Selector:
         self.phase_plan = phase_plan or {"probe": 6, "structural": 14, "combine": 8}
         self.rng = random.Random(seed)
         self.overflow_hard_limit = overflow_hard_limit
+        self.force_phase: Optional[str] = None
         self._fail_streak: Dict[str, int] = {}
+        # 续跑：按创建顺序重放已评估候选，恢复父代失败计数
+        for m in sorted(self.store.all(), key=lambda x: x.created_at):
+            if m.status in ("evaluated", "invalid"):
+                self.record_outcome(m)
+
+    def rescale_phase_plan(self, total: int) -> None:
+        """把 phase_plan 按比例缩放到 total 次评估（最后一个阶段吃掉舍入误差）。"""
+        keys = list(self.phase_plan)
+        old = sum(self.phase_plan.values()) or 1
+        new = {k: max(1, int(round(self.phase_plan[k] * total / old))) for k in keys}
+        new[keys[-1]] += total - sum(new.values())
+        self.phase_plan = new
 
     # ---------- 阶段 ----------
     def phase_for(self, evaluations_done: int) -> str:
+        if self.force_phase:
+            return self.force_phase
         acc = 0
         for name, n in self.phase_plan.items():
             acc += n
@@ -87,8 +102,10 @@ class Selector:
 
     # ---------- 反馈 ----------
     def record_outcome(self, child: CandidateMeta) -> None:
-        """child 评估后调用：更新父代的失败计数。"""
-        if child.parent is None:
+        """child 评估后调用：更新父代的失败计数。gate_failed 是格式/harness 层面的事，不算父代的账。"""
+        if child.parent is None or child.status == "gate_failed":
+            return
+        if child.parent not in self.store._metas:
             return
         parent = self.store.get(child.parent)
         improved = (

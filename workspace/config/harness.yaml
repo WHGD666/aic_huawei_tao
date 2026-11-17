@@ -4,10 +4,11 @@ seed: 0
 
 budget:
   max_evaluations: 30               # 官方上限
-  max_cost_cny: 15.0                # 官方上限
+  max_cost_cny: 12.0                # 官方上限 15；本地单价是估计值（pricing.yaml），留 20% 余量防止超支停机
   dev_cost_cny: 10.0                # 开发阶段自己的钱包
   per_round_cost_cap_cny: 0.35      # 单轮软上限，超过则下一轮缩短 prompt
-  reserve_evaluations: 2            # 最后保留用于复核
+  reserve_evaluations: 2            # 主循环结束后进入 final 阶段：对最优候选做保守微调（这 2 次会被用掉）
+  max_consecutive_gate_failures: 6  # 连续 N 轮门禁失败即停（保护 API 费）
 
 llm:
   model: ${DEEPSEEK_MODEL}

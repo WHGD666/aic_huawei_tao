@@ -18,6 +18,11 @@ allowed:
   # 评估流程里"布局与合法化"一侧的合法化脚本
   - "OpenROAD-3D/flow/scripts_3D/lg_bottom.tcl"
   - "OpenROAD-3D/flow/scripts_3D/lg_upper.tcl"
+per_design:
+  - "Place-LoL/test/3D_input_default/*.json"
+  - "OpenROAD-3D/flow/designs/nangate45_3D/*/config_lol.mk"
+  - "OpenROAD-3D/flow/designs/nangate45_3D/*/config.mk"
+  - "OpenROAD-3D/flow/designs/nangate45_3D/*/fastroute.tcl"
 denied:
   # 评估 / 指标 / 计分 / 数据库读取
   - "**/get_metrics*.py"

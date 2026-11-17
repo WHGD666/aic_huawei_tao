@@ -22,7 +22,7 @@ from typing import Dict, List, Optional, Tuple
 
 import yaml
 
-from .codebase import match_any
+from .codebase import glob_match, match_any
 
 
 def _mk_check(src: str) -> str:
@@ -154,13 +154,30 @@ class GateReport:
 
 
 class Gate:
-    def __init__(self, whitelist_file: Path, forbidden_patterns: List[str], run_pyflakes: bool = True, smoke_cmd: str = ""):
+    def __init__(self, whitelist_file: Path, forbidden_patterns: List[str], run_pyflakes: bool = True, smoke_cmd: str = "",
+                 case_names: Optional[List[str]] = None):
         wl = yaml.safe_load(open(whitelist_file, encoding="utf-8"))
         self.allowed: List[str] = wl.get("allowed", [])
         self.denied: List[str] = wl.get("denied", [])
+        # per_design: 这些 glob 匹配"按算例一份"的文件；候选改了其中一个就必须对所有同类文件做相同改动
+        self.per_design: List[str] = wl.get("per_design", [])
         self.forbidden = [re.compile(p, re.IGNORECASE) for p in forbidden_patterns]
         self.run_pyflakes = run_pyflakes
         self.smoke_cmd = smoke_cmd
+        # 题面 §十一(三)：不得按算例名硬编码。算例名及其电路名/工艺名 token 在新增行里出现 -> 硬错误
+        toks, short = set(), set()
+        generic = {"top", "core", "wrapper", "ng45", "asap7", "nangate45", "sky130", "gf180"}
+        for c in case_names or []:
+            toks.add(c)
+            circuit = c.rsplit("-", 1)[0] if "-" in c else c        # bp_fe-ng45 -> bp_fe
+            (toks if len(circuit) >= 4 else short).add(circuit)      # 'bp' 这种短名只在字符串字面量里才算
+            for part in re.split(r"[-_]", c):
+                if len(part) >= 4 and part.lower() not in generic:
+                    toks.add(part)
+        self.case_tokens = sorted(toks, key=len, reverse=True)
+        self.short_tokens = sorted(short)
+        self._case_re = re.compile(r"(?<![A-Za-z0-9_])(" + "|".join(map(re.escape, self.case_tokens)) + r")(?![A-Za-z0-9_])", re.I) if self.case_tokens else None
+        self._short_re = re.compile(r"['\"](" + "|".join(map(re.escape, self.short_tokens)) + r")['\"]", re.I) if self.short_tokens else None
 
     # ---------- public ----------
     def check(self, changed_files: Dict[str, str], patch_text: str, workdir: Optional[Path] = None,
@@ -173,6 +190,8 @@ class Gate:
         rep = GateReport(ok=True)
         self._check_paths(changed_files, rep)
         self._check_forbidden(patch_text, rep)
+        self._check_case_names(patch_text, rep)
+        self._check_per_design_consistency(changed_files, baseline_files or {}, rep)
         self._check_syntax(changed_files, rep)
         if self.run_pyflakes:
             self._check_pyflakes(changed_files, rep, baseline_files or {})
@@ -194,6 +213,60 @@ class Gate:
                 rep.errors.append(f"file not in whitelist: {f}")
             elif self._match_any(f, self.denied):
                 rep.errors.append(f"file explicitly denied: {f}")
+
+    _PDK_RE = re.compile(r"(?<![A-Za-z0-9_])(ng45|nangate45|asap7|sky130|gf180)(?![A-Za-z0-9_])", re.I)
+    _COND_RE = re.compile(r"==|!=|\bif\b|\belif\b|\bin\b|\bmatch\b|\bcase\b|\bswitch\b|[{[]\s*['\"]")
+
+    def _check_case_names(self, patch: str, rep: GateReport) -> None:
+        """新增行里出现训练/验证算例名或其电路名 token（bp_fe / ariane133 / swerv ...）-> 视为按算例特判，硬错误。
+        工艺名 token（ng45 / asap7 ...）出现在条件/查表语境里 -> 硬错误（按工艺分支 = 对隐藏算例不泛化）；其它语境只警告。
+        注释（整行或行尾）里提到不算错，只警告。"""
+        for ln in patch.splitlines():
+            if not (ln.startswith("+") and not ln.startswith("+++")):
+                continue
+            body = ln[1:]
+            stripped = body.strip()
+            # 去掉行尾注释（粗略：# 或 // 之后；字符串里的 # 极少见于这些代码）
+            code = re.split(r"\s+#|^#|//", body, maxsplit=1)[0]
+            is_comment_only = stripped.startswith(("#", "//", "/*", "*", "--"))
+            if self._case_re is not None or self._short_re is not None:
+                m = None
+                if not is_comment_only:
+                    m = (self._case_re.search(code) if self._case_re else None) or (self._short_re.search(code) if self._short_re else None)
+                if m:
+                    rep.errors.append(f"added line references case/circuit token '{m.group(1)}' (no per-circuit special-casing allowed): {stripped[:100]}")
+                    continue
+                m2 = self._case_re.search(body) if self._case_re else None
+                if m2:
+                    rep.warnings.append(f"added comment mentions case token '{m2.group(1)}': {stripped[:80]}")
+            pm = self._PDK_RE.search(code if not is_comment_only else "")
+            if pm:
+                if self._COND_RE.search(code):
+                    rep.errors.append(f"added line branches on PDK/platform token '{pm.group(1)}' (derive from LEF/Liberty instead): {stripped[:100]}")
+                else:
+                    rep.warnings.append(f"added line mentions PDK token '{pm.group(1)}': {stripped[:80]}")
+
+    def _check_per_design_consistency(self, files: Dict[str, str], baseline: Dict[str, str], rep: GateReport) -> None:
+        """白名单 per_design 下的文件：若改了其中一个，则所有同类文件的 diff 必须一致（同样的 SEARCH→REPLACE），否则就是按算例调参。
+        实现：把每个被改文件相对基线的 'added lines 集合' 比较；只要 per_design 组里有文件被改而其它没被改，或 added 集不同 -> 错误。"""
+        if not self.per_design:
+            return
+        groups: Dict[str, List[str]] = {}
+        for f in files:
+            for g in self.per_design:
+                if glob_match(f, g):
+                    groups.setdefault(g, []).append(f)
+        for g, changed in groups.items():
+            import difflib
+            added = {}
+            for f in changed:
+                b = baseline.get(f, "").splitlines()
+                n = files[f].splitlines()
+                added[f] = tuple(l for l in difflib.unified_diff(b, n, lineterm="", n=0) if l.startswith("+") and not l.startswith("+++"))
+            vals = set(added.values())
+            if len(vals) > 1:
+                rep.errors.append(f"per-design files under '{g}' received different edits ({', '.join(Path(f).name for f in changed)}); "
+                                  f"per-circuit tuning is not allowed — apply the identical change to every design or edit shared code instead")
 
     def _check_forbidden(self, patch: str, rep: GateReport) -> None:
         for ln in patch.splitlines():

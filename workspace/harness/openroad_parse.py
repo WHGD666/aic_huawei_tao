@@ -58,8 +58,7 @@ def detect_time_unit(text: str, default: str = "ns") -> str:
     m = _RE_CMD_UNITS.search(text) or _RE_TIME_UNIT.search(text)
     if m:
         return m.group(1).lower()
-    if re.search(r"\basap7\b", text, re.I):
-        return "ps"
+    # 不按工艺名猜单位（题面禁止按算例/工艺特判，而且 PDK 的单位应从 Liberty 读）。读不到就用 default。
     return default
 
 

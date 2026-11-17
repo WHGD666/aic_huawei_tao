@@ -235,27 +235,26 @@ class Edit:
 
 def apply_edits(base_root: Path, work_root: Path, edits: List[Edit], fallback_root: Optional[Path] = None) -> Tuple[Dict[str, str], List[str]]:
     """
-    依次应用 SEARCH/REPLACE。文件来源优先级：work_root 已有 > base_root > fallback_root（父代工作副本只含父代改过的文件，
-    其它文件要回退到官方基线）。返回 ({relpath: new_content}, errors)。SEARCH 必须唯一精确匹配。
+    依次应用 SEARCH/REPLACE。文件来源优先级：work_root 已有 > base_root > fallback_root。
+    原子性：任一 SEARCH 失败则**不写任何文件**（避免 gate_failed 候选的 patch 记录半应用状态）。
+    返回 ({relpath: new_content}, errors)。SEARCH 必须唯一精确匹配。
     """
-    import shutil
     changed: Dict[str, str] = {}
     errors: List[str] = []
     for e in edits:
-        dst = work_root / e.file
+        if e.file.startswith(("/", "\\")) or ".." in e.file.replace("\\", "/").split("/") or ":" in e.file[:3]:
+            errors.append(f"{e.file}: illegal path")
+            continue
         if e.file not in changed:
-            if not dst.exists():
-                src = None
-                for root in (base_root, fallback_root):
-                    if root is not None and (root / e.file).exists():
-                        src = root / e.file
-                        break
-                if src is None:
-                    errors.append(f"{e.file}: file does not exist in baseline")
-                    continue
-                dst.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(src, dst)
-            changed[e.file] = dst.read_text(encoding="utf-8", errors="ignore")
+            src = None
+            for root in (work_root, base_root, fallback_root):
+                if root is not None and (root / e.file).exists():
+                    src = root / e.file
+                    break
+            if src is None:
+                errors.append(f"{e.file}: file does not exist in baseline")
+                continue
+            changed[e.file] = src.read_text(encoding="utf-8", errors="ignore")
         content = changed[e.file]
         n = content.count(e.search)
         if n == 0:
@@ -265,8 +264,11 @@ def apply_edits(base_root: Path, work_root: Path, edits: List[Edit], fallback_ro
             errors.append(f"{e.file}: SEARCH block matches {n} places; make it more specific")
             continue
         changed[e.file] = content.replace(e.search, e.replace, 1)
+    if errors:
+        return changed, errors
     for f, c in changed.items():
-        (work_root / f).write_text(c, encoding="utf-8")
+        (work_root / f).parent.mkdir(parents=True, exist_ok=True)
+        (work_root / f).write_text(c, encoding="utf-8", newline="")
     return changed, errors
 
 
@@ -289,7 +291,7 @@ def patch_changed_lines(patch_text: str) -> Dict[str, List[int]]:
             out[cur].append(new_ln)
             new_ln += 1
         elif ln.startswith("-"):
-            out[cur].append(new_ln)  # 删除处：标记当前位置，便于窗口覆盖
+            out[cur].append(new_ln)
         elif ln.startswith("\\"):
             continue
         else:
@@ -297,19 +299,51 @@ def patch_changed_lines(patch_text: str) -> Dict[str, List[int]]:
     return {k: sorted(set(v)) for k, v in out.items() if v}
 
 
+def _difflib_diff(f: str, a: Path, b: Path) -> str:
+    """无 git 时的兜底：difflib 生成 unified diff（git apply 可读；无 index 行）。"""
+    import difflib
+    at = a.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True) if a.exists() else []
+    bt = b.read_text(encoding="utf-8", errors="replace").splitlines(keepends=True) if b.exists() else []
+    out = list(difflib.unified_diff(at, bt, fromfile=f"a/{f}" if a.exists() else "/dev/null",
+                                    tofile=f"b/{f}" if b.exists() else "/dev/null", n=3))
+    if not out:
+        return ""
+    # difflib 的 --- / +++ 行自带 \n，其余 hunk 行保留原换行
+    body = "".join(out)
+    if not body.endswith("\n"):
+        body += "\n"
+    return f"diff --git a/{f} b/{f}\n" + body
+
+
+def patch_fingerprint(patch_text: str) -> str:
+    """去重用：只看 hunk 内容（+/- 行与上下文），忽略 index/mode/行号偏移。"""
+    import hashlib as _h
+    keep = [ln for ln in patch_text.splitlines()
+            if not ln.startswith(("diff --git", "index ", "old mode", "new mode", "--- ", "+++ ", "@@"))]
+    return _h.sha256("\n".join(keep).encode("utf-8")).hexdigest()
+
+
 def git_diff(base_root: Path, work_root: Path, files: List[str]) -> str:
-    """用 git diff --no-index 生成标准 unified diff，路径规整为 a/<rel> b/<rel>（可直接 git apply 到基线）。"""
+    """用 git diff --no-index 生成标准 unified diff，路径规整为 a/<rel> b/<rel>（可直接 git apply 到基线）。
+    无 git 可执行文件时退化为 difflib。"""
+    import shutil as _sh
+    have_git = _sh.which("git") is not None
     parts = []
     for f in files:
         a, b = base_root / f, work_root / f
+        if not have_git:
+            parts.append(_difflib_diff(f, a, b))
+            continue
         r = subprocess.run(
             ["git", "diff", "--no-index", "--", str(a), str(b)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         lines = []
         for ln in r.stdout.splitlines():
             if ln.startswith("diff --git "):
                 lines.append(f"diff --git a/{f} b/{f}")
+            elif ln.startswith(("old mode ", "new mode ", "index ")):
+                continue   # 文件模式/blob 哈希与内容无关（挂载盘上 chmod 不稳定），去掉让 patch 只反映内容
             elif ln.startswith("--- ") and not ln.startswith("--- /dev/null"):
                 lines.append(f"--- a/{f}")
             elif ln.startswith("+++ ") and not ln.startswith("+++ /dev/null"):

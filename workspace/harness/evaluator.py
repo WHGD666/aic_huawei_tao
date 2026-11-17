@@ -69,9 +69,11 @@ class MockEvaluator(Evaluator):
         "ariane133-ng45": (-0.80, -950.0),
     }
 
-    def __init__(self, cases, seeds, fail_rate: float = 0.25, full_flow: bool = False, latency_s: float = 0.0):
+    def __init__(self, cases, seeds, fail_rate: float = 0.25, full_flow: bool = False, latency_s: float = 0.0,
+                 sporadic_rate: float = 0.005):
         super().__init__(cases, seeds)
-        self.fail_rate = fail_rate
+        self.fail_rate = fail_rate          # 按候选抽样的系统性失败
+        self.sporadic_rate = sporadic_rate  # 按 run 抽样的偶发失败（测试里设 0 以保证确定性）
         self.full_flow = full_flow
         self.latency_s = latency_s
 
@@ -100,7 +102,7 @@ class MockEvaluator(Evaluator):
         # 失败按"候选"而非按"run"抽样：真实世界里一个改动要么在所有算例上都跑得通，要么系统性地炸（偶发单 run 失败另算小概率）
         cand_fails = rng.random() < self.fail_rate
         for key, b in base.items():
-            if cand_fails or rng.random() < 0.005:
+            if cand_fails or rng.random() < self.sporadic_rate:
                 reason = rng.choice(["legalization overlap", "stage timeout", "HBT min-spacing violation", "KeyError in partition"])
                 runs[key] = RunMetrics(b.case, b.seed, 0, 0, valid=False, fail_reason=reason)
                 logs[key] = f"[ERROR] {reason}\nTraceback (most recent call last): ...\n"

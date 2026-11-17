@@ -214,13 +214,22 @@ def test_store_lineage_and_selector(tmp_path):
     assert st.lineage_of("c002") == ["c001", "c002"]
     assert st.children("c001")[0].id == "c002"
     assert (tmp_path / "c" / "lineage.jsonl").exists()
-    sel = Selector(st, elite_size=2, max_consecutive_failures=1, phase_plan={"probe": 1, "structural": 2, "combine": 1})
+    sel = Selector(st, elite_size=2, max_consecutive_failures=2, phase_plan={"probe": 1, "structural": 2, "combine": 1})
     assert sel.phase_for(0) == "probe" and sel.phase_for(1) == "structural" and sel.phase_for(3) == "combine" and sel.phase_for(4) == "final"
     assert sel.best().id == "c001"
     assert sel.choose_parent("probe") is None
+    # 构造时已重放历史：c002 劣于父代 c001 -> c001 streak=1（上限 2，仍可选）
+    assert sel._fail_streak == {"c001": 1}
     assert sel.choose_parent("final") == "c001"
-    sel.record_outcome(b)                      # b worse than parent -> parent streak 1 -> excluded
+    sel.record_outcome(b)                      # 再记一次 -> streak 2 -> 排除
     assert sel.choose_parent("final") == "c002"
+    # gate_failed 的子代不算父代的账
+    g = CandidateMeta("c003", "c002", "h3", "e", [], "structural", status="gate_failed")
+    sel.record_outcome(g)
+    assert sel._fail_streak.get("c002", 0) == 0
+    sel.force_phase = "final"
+    assert sel.phase_for(0) == "final"
+    sel.force_phase = None
     assert "c001" in sel.history_digest()
     # reload from disk
     st2 = CandidateStore(tmp_path / "c")
@@ -260,3 +269,72 @@ def test_patch_changed_lines_and_boost():
     ln = next(i for i, l in enumerate(src, 1) if "def repair_balance" in l) + 1
     hit = cb.search(["zzz_nomatch"], k=3, boost_lines={"partition/gnn_partition.py": [ln]})
     assert hit and hit[0].file == "partition/gnn_partition.py" and hit[0].start <= ln <= hit[0].end
+
+
+def test_gate_case_name_hardcoding_rejected():
+    g = Gate(WL, [], run_pyflakes=False, case_names=["bp_fe-ng45", "bp-ng45", "ariane133-ng45"])
+    bad = "+    if design == 'bp_fe':\n+        lam = 0.5\n"
+    rep = g.check({"partition/gnn_partition.py": "x = 1\n"}, bad)
+    assert not rep.ok and any("bp_fe" in e for e in rep.errors)
+    bad2 = "+    weights = {'ariane133': 2.0}\n"
+    assert not g.check({"partition/gnn_partition.py": "x = 1\n"}, bad2).ok
+    # 注释里提一下不算错（只警告）；普通代码不含 token 正常
+    ok = g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    # tuned on bp_fe-like designs\n+    lam = 0.5\n")
+    assert ok.ok and ok.warnings
+    # 'top' 'core' 这类通用词不应成为 token；短名 'bp' 只在字符串字面量里才算
+    assert "top" not in g.case_tokens and "core" not in g.case_tokens
+    assert g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    bp = base_point + 1\n").ok
+    assert not g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    if d == 'bp': pass\n").ok
+    # 按工艺分支是错误；只是提到工艺名是警告
+    assert not g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    if pdk == 'asap7': u = 'ps'\n").ok
+    r = g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    lef = read(platform)  # ng45 or asap7\n")
+    assert r.ok
+
+
+def test_gate_per_design_consistency(tmp_path):
+    import yaml
+    wlf = tmp_path / "wl.yaml"
+    wlf.write_text(yaml.safe_dump({"allowed": ["cfg/*.json"], "per_design": ["cfg/*.json"], "denied": []}), encoding="utf-8")
+    g = Gate(wlf, [], run_pyflakes=False)
+    base = {"cfg/a.json": '{"d": 0.4}\n', "cfg/b.json": '{"d": 0.4}\n'}
+    same = {"cfg/a.json": '{"d": 0.5}\n', "cfg/b.json": '{"d": 0.5}\n'}
+    diff = {"cfg/a.json": '{"d": 0.5}\n', "cfg/b.json": '{"d": 0.4}\n'}
+    assert g.check(same, "", baseline_files=base).ok
+    r = g.check(diff, "", baseline_files=base)
+    assert not r.ok and any("per-design" in e for e in r.errors)
+
+
+def test_store_new_id_after_deletion(tmp_path):
+    st = CandidateStore(tmp_path / "c")
+    for i in range(3):
+        st.create(CandidateMeta(st.new_id(), None, "h", "e", [], "probe"), "")
+    import shutil
+    shutil.rmtree(tmp_path / "c" / "c002")
+    st2 = CandidateStore(tmp_path / "c")
+    assert st2.new_id() == "c004"
+
+
+def test_apply_edits_atomic_and_path_guard(tmp_path):
+    work = tmp_path / "w"
+    changed, errs = apply_edits(FAKE, work, [
+        Edit("partition/gnn_partition.py", "TIMING_WEIGHT = 0.0", "TIMING_WEIGHT = 0.5"),
+        Edit("placement/place3d.py", "NOPE", "x"),
+    ])
+    assert errs and not (work / "partition/gnn_partition.py").exists()   # 任一失败则整体不写
+    _, errs2 = apply_edits(FAKE, work, [Edit("../harness/budget.py", "a", "b")])
+    assert errs2 and "illegal path" in errs2[0]
+
+
+def test_difflib_fallback_patch_applies(tmp_path):
+    """HIGH#4：无 git 时 difflib 生成的 patch 也要能被 git apply（这里用 git 验证兜底产物）。"""
+    from harness.codebase import _difflib_diff
+    import subprocess, shutil
+    work = tmp_path / "w"
+    apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "TIMING_WEIGHT = 0.0", "TIMING_WEIGHT = 0.5")])
+    d = _difflib_diff("partition/gnn_partition.py", FAKE / "partition/gnn_partition.py", work / "partition/gnn_partition.py")
+    assert d.startswith("diff --git a/partition/gnn_partition.py b/partition/gnn_partition.py")
+    base_copy = tmp_path / "base"; shutil.copytree(FAKE, base_copy)
+    (tmp_path / "p.patch").write_text(d, encoding="utf-8")
+    r = subprocess.run(["git", "apply", str(tmp_path / "p.patch")], cwd=base_copy, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert "TIMING_WEIGHT = 0.5" in (base_copy / "partition/gnn_partition.py").read_text()

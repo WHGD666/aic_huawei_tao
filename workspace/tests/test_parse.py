@@ -32,7 +32,7 @@ def test_time_unit_detection_and_conversion():
     assert detect_time_unit(_r("sta_ng45.rpt")) == "ns"
     assert detect_time_unit(_r("sta_asap7_head.txt")) == "ps"
     assert detect_time_unit("set_cmd_units -time ps -capacitance fF") == "ps"
-    assert detect_time_unit("bp_fe-asap7 run") == "ps"
+    assert detect_time_unit("bp_fe-asap7 run") == "ns"      # 不再按工艺名猜；无 Liberty 线索时用默认
     w, t = parse_wns_tns(_r("sta_asap7_head.txt"))
     assert to_ns(w, "ps") == pytest.approx(-0.2105) and to_ns(t, "ps") == pytest.approx(-15.4)
 

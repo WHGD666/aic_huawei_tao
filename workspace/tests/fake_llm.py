@@ -89,11 +89,32 @@ class FakeLLM:
         self.script = list(script)
         self.usage = usage
         self.calls: List[Tuple[str, List[Dict[str, str]]]] = []
+        self._auto = 0
 
     def chat(self, messages, temperature=0.7, max_tokens=2048, tag=""):
         self.calls.append((tag, messages))
         if tag == "analyze":
             return ANALYSIS, Usage(400, 60, 0)
         if not self.script:
-            return GOOD_PROPOSAL, self.usage
+            return self._auto_proposal(messages), self.usage
         return self.script.pop(0), self.usage
+
+    def _auto_proposal(self, messages) -> str:
+        """脚本用尽时：像一个"会读代码"的模型一样，从 prompt 展示的片段里找出当前 TIMING_WEIGHT 值并提出新值。
+        这样建立在父代之上的子代也能通过 SEARCH 校验。"""
+        import re
+        shown = "\n".join(m["content"] for m in messages if m["role"] == "user")
+        # 只看"Relevant code chunks"之后的部分（历史/父代 patch 里也会出现旧值）
+        i = shown.find("## Relevant code chunks")
+        region = shown[i:] if i >= 0 else shown
+        m = re.search(r"^TIMING_WEIGHT = ([0-9.]+)$", region, re.M)
+        cur = m.group(1) if m else "0.0"
+        self._auto += 1
+        new = f"0.{50 + self._auto}"
+        # 先换 REPLACE 行（0.5）再换 SEARCH 行（0.0），避免二次替换吃掉刚写入的值
+        return GOOD_PROPOSAL.replace("TIMING_WEIGHT = 0.5\n", f"TIMING_WEIGHT = {new}\n").replace("TIMING_WEIGHT = 0.0\n", f"TIMING_WEIGHT = {cur}\n")
+
+
+def varied(n: int) -> List[str]:
+    """n 个互不相同的**从基线出发**的合法提案（probe 阶段用）。structural 阶段请让脚本用尽，走 _auto_proposal。"""
+    return [GOOD_PROPOSAL.replace("TIMING_WEIGHT = 0.5", f"TIMING_WEIGHT = 0.{i + 1}") for i in range(n)]

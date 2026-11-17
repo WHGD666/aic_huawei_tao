@@ -53,13 +53,22 @@ class CandidateStore:
 
     # ---------- CRUD ----------
     def new_id(self) -> str:
-        n = len(self._metas) + 1
-        return f"c{n:03d}"
+        """取 max(已有 id)+1，不按计数——删过目录也不会撞 id。"""
+        mx = 0
+        for cid in list(self._metas) + [p.name for p in self.root.glob("c[0-9]*")]:
+            try:
+                mx = max(mx, int(cid[1:]))
+            except ValueError:
+                pass
+        return f"c{mx + 1:03d}"
+
+    def write_patch(self, cid: str, patch_text: str) -> None:
+        (self.root / cid / "candidate.patch").write_text(patch_text, encoding="utf-8", newline="")
 
     def create(self, meta: CandidateMeta, patch_text: str) -> Path:
         d = self.root / meta.id
         (d / "llm").mkdir(parents=True, exist_ok=True)
-        (d / "candidate.patch").write_text(patch_text, encoding="utf-8")
+        (d / "candidate.patch").write_text(patch_text, encoding="utf-8", newline="")
         self._metas[meta.id] = meta
         self._flush(meta)
         self._event("create", meta.id, parent=meta.parent, phase=meta.phase, hypothesis=meta.hypothesis)
