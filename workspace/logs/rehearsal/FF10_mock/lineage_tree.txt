@@ -1,0 +1,10 @@
+c001 [    invalid]   --    The baseline sets `TNS_END_PERCENT = 100` and `SKIP_GATE_CLO
+c002 [  evaluated] -0.127  Enabling CTS sink clustering with a larger max diameter (200
+  c003 [  evaluated] +0.044  The parent bumped CTS sink-cluster diameter/size, which made
+    c006 [  evaluated] +0.229  The parent (c003) reverted CTS clustering to size=1/diameter
+      c009 [    invalid]   --    The parent (c006) gained by shrinking CTS sink clustering (s
+      c010 [  evaluated] +0.349  The parent (c006) combined CTS cluster_size=1/diameter=50 wi
+    c007 [  evaluated] -0.057  Combine the two independently-successful mechanisms: keep th
+    c008 [    invalid]   --    The best candidate (c006, CTS cluster_size=1/diameter=50) re
+  c004 [  evaluated] +0.010  Disable CTS sink clustering (size/diameter = 0) so the clock
+    c005 [    invalid]   --    The parent disabled CTS sink clustering entirely (size/diame

@@ -1,0 +1,35 @@
+{
+ "id": "c007",
+ "parent": "c003",
+ "hypothesis": "Combine the two independently-successful mechanisms: keep the parent's CTS sink clustering (size=1, diameter=50) and additionally fine-tune it modestly (x2 diameter to 100) so clustered sinks still avoid long clock-detour while reducing buffer/routing pressure — a small coefficient step on the best-known knob rather than a new mechanism.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "combine",
+ "created_at": 1794922183.807129,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": -0.0570977443878659,
+ "score_robust": -0.06043458378516656,
+ "per_case": {
+  "bp_fe-ng45": 0.035851869507566005,
+  "bp-ng45": -0.06413723814361182,
+  "ariane133-ng45": -0.028812375751820083
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis did not hold: total score is negative (-0.057) and robustly so (mean-std -0.060), with all three cases valid. The modest diameter x2 step hurt bp-ng45 most (dWNS -12.9%), while bp_fe-ng45 improved slightly (+0.036, dTNS +6.6%) and ariane133-ng45 was mildly negative. Plausible mechanism: doubling diameter over-clusters sinks, adding detour/buffer pressure that outweighs routing savings on the sensitive bp case. Next step: sweep diameter between 50 and 100 (e.g., 60/75) per-case rather than a single global x2, and gate the change to cases where overflow is high.",
+ "llm_cost_cny": 0.0044732,
+ "eval_wall_s": 0.0001163482666015625,
+ "tags": [
+  "CTS_CLUSTER_DIAMETER",
+  "CTS_CLUSTER_SIZE",
+  "sink_clustering_max_diameter",
+  "repair_clock_nets",
+  "set_placement_padding",
+  "DONT_USE_CELLS"
+ ],
+ "max_overflow": 156.86813616507504,
+ "prompt_chars": 19090
+}

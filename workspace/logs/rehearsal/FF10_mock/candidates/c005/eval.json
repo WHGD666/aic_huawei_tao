@@ -1,0 +1,98 @@
+{
+ "candidate_id": "c005",
+ "wall_s": 8.440017700195312e-05,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": -0.34761425676719315,
+   "tns": -146.678356007687,
+   "overflow": 88.43113162539537,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "KeyError in partition"
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": -0.3186139909379818,
+   "tns": -152.78297689970975,
+   "overflow": 115.1848886529212,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": -0.4922515911448355,
+   "tns": -538.3612181298332,
+   "overflow": 129.73499998554303,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": -0.389909886634349,
+   "tns": -448.5674281795082,
+   "overflow": 90.35696678279629,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": -0.537185184619307,
+   "tns": -449.16436824305725,
+   "overflow": 152.65805687398867,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": -0.7427713903701317,
+   "tns": -1146.2970568310702,
+   "overflow": 70.3184020764873,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": -0.8199204846861217,
+   "tns": -703.6898624779384,
+   "overflow": 55.97651592078995,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": -0.8127709273709771,
+   "tns": -766.8252454255427,
+   "overflow": 152.0532506388817,
+   "valid": true,
+   "fail_reason": ""
+  }
+ },
+ "stage_logs": {
+  "bp_fe-ng45/1001": "[INFO] wns=-0.348 tns=-146.7 overflow=88\n",
+  "bp_fe-ng45/1002": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.319 tns=-152.8 overflow=115\n",
+  "bp-ng45/1001": "[INFO] wns=-0.492 tns=-538.4 overflow=130\n",
+  "bp-ng45/1002": "[INFO] wns=-0.390 tns=-448.6 overflow=90\n",
+  "bp-ng45/1003": "[INFO] wns=-0.537 tns=-449.2 overflow=153\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.743 tns=-1146.3 overflow=70\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.820 tns=-703.7 overflow=56\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.813 tns=-766.8 overflow=152\n"
+ }
+}

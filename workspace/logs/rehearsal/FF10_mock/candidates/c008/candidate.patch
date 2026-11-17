@@ -1,0 +1,30 @@
+diff --git a/OpenROAD-3D/flow/scripts/cts.tcl b/OpenROAD-3D/flow/scripts/cts.tcl
+--- a/OpenROAD-3D/flow/scripts/cts.tcl
++++ b/OpenROAD-3D/flow/scripts/cts.tcl
+@@ -11,12 +11,12 @@ repair_clock_inverters
+ if {[info exist ::env(CTS_CLUSTER_SIZE)]} {
+   set cluster_size "$::env(CTS_CLUSTER_SIZE)"
+ } else {
+-  set cluster_size 30
++  set cluster_size 1
+ }
+ if {[info exist ::env(CTS_CLUSTER_DIAMETER)]} {
+   set cluster_diameter "$::env(CTS_CLUSTER_DIAMETER)"
+ } else {
+-  set cluster_diameter 100
++  set cluster_diameter 50
+ }
+ 
+ proc save_progress {stage} {
+diff --git a/OpenROAD-3D/flow/scripts/global_route.tcl b/OpenROAD-3D/flow/scripts/global_route.tcl
+--- a/OpenROAD-3D/flow/scripts/global_route.tcl
++++ b/OpenROAD-3D/flow/scripts/global_route.tcl
+@@ -24,7 +24,7 @@ if {[info exist env(FASTROUTE_TCL)]} {
+ global_route -guide_file $env(RESULTS_DIR)/route.guide \
+                -congestion_report_file $env(REPORTS_DIR)/congestion.rpt \
+                {*}[expr {[info exists ::env(GLOBAL_ROUTE_ARGS)] ? $::env(GLOBAL_ROUTE_ARGS) : \
+-               {-congestion_iterations 2 -congestion_report_iter_step 5 -verbose}}]
++               {-congestion_iterations 4 -congestion_report_iter_step 5 -verbose}}]
+ 
+ if {[info exist env(IDEAL_CLOCK)]} {
+   set_ideal_network [all_clocks]

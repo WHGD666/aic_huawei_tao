@@ -1,0 +1,12 @@
+diff --git a/OpenROAD-3D/flow/scripts/cts.tcl b/OpenROAD-3D/flow/scripts/cts.tcl
+--- a/OpenROAD-3D/flow/scripts/cts.tcl
++++ b/OpenROAD-3D/flow/scripts/cts.tcl
+@@ -11,7 +11,7 @@ repair_clock_inverters
+ if {[info exist ::env(CTS_CLUSTER_SIZE)]} {
+   set cluster_size "$::env(CTS_CLUSTER_SIZE)"
+ } else {
+-  set cluster_size 30
++  set cluster_size 1
+ }
+ if {[info exist ::env(CTS_CLUSTER_DIAMETER)]} {
+   set cluster_diameter "$::env(CTS_CLUSTER_DIAMETER)"

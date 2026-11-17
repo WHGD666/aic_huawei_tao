@@ -1,0 +1,62 @@
+{
+ "task": "full_flow",
+ "run_dir": "logs/FF3",
+ "budget": {
+  "evaluations": 10,
+  "cost_cny": 0.044402,
+  "usage": {
+   "prompt_tokens": 54530,
+   "completion_tokens": 6744,
+   "cache_hit_tokens": 26240,
+   "reasoning_tokens": 0
+  },
+  "llm_calls": 20,
+  "started_at": 1794922149.3785338
+ },
+ "n_candidates": 10,
+ "n_evaluated": 6,
+ "n_gate_failed": 0,
+ "n_invalid": 4,
+ "best": {
+  "id": "c010",
+  "parent": "c006",
+  "hypothesis": "The parent (c006) combined CTS cluster_size=1/diameter=50 with allowing upper-tier BUF/CLKBUF cells. The upper-tier buffer allowance is the mechanism that generalizes (it gives rsz resources on both tiers), while the aggressive cluster_size=1 was flagged in earlier rounds as WNS-degrading. A conservative refinement: keep the upper-tier buffer allowance but restore CTS cluster_size to a moderate value (30) while keeping the reduced diameter (50), so we retain the TNS gain from upper-tier repair without the WNS loss from over-fragmented clock clustering.",
+  "expected_effect": "",
+  "files_changed": [
+   "OpenROAD-3D/flow/scripts/cts.tcl"
+  ],
+  "phase": "final",
+  "created_at": 1794922196.476757,
+  "status": "evaluated",
+  "gate_report": "OK",
+  "score_total": 0.3485231869999018,
+  "score_robust": 0.06298294239058502,
+  "per_case": {
+   "bp_fe-ng45": 0.0646106995281794,
+   "bp-ng45": 0.09452329123622244,
+   "ariane133-ng45": 0.18938919623550002
+  },
+  "all_valid": true,
+  "fail_reasons": [],
+  "analysis": "The hypothesis held: restoring CTS cluster_size=30 while keeping diameter=50 and upper-tier BUF/CLKBUF allowance yields all-valid, positive results (total +0.349, robust +0.063). All three cases improved WNS and TNS, with ariane133-ng45 strongest (dWNS +8.9%, dTNS +25.8%), consistent with upper-tier repair resources driving TNS gain without the over-fragmentation WNS penalty. Overflow ~166–184 is modest. Next step: sweep cluster_size (20/30/40) at diameter=50 to confirm 30 is near-optimal and check whether larger diameters further reduce overflow without eroding WNS.",
+  "llm_cost_cny": 0.0051798,
+  "eval_wall_s": 0.00010752677917480469,
+  "tags": [
+   "CTS_CLUSTER_SIZE",
+   "CTS_CLUSTER_DIAMETER",
+   "DONT_USE_CELLS",
+   "repair_timing",
+   "clock_tree_synthesis"
+  ],
+  "max_overflow": 204.52952062399356,
+  "prompt_chars": 21832,
+  "expected": "WNS: neutral-to-slightly-better (less fragmented clock tree); TNS: retained or slightly improved (upper-tier buffers still available); overflow: unchanged (~120); runtime: unchanged."
+ },
+ "code_version": {
+  "harness_git": "",
+  "baseline_whitelist_sha256": "70d27a6c671363b8",
+  "model": "deepseek-flash",
+  "evaluator_mode": "mock",
+  "whitelist_file": "config/whitelist_full_flow.yaml"
+ }
+}

@@ -1,0 +1,33 @@
+diff --git a/OpenROAD-3D/flow/scripts/cts.tcl b/OpenROAD-3D/flow/scripts/cts.tcl
+--- a/OpenROAD-3D/flow/scripts/cts.tcl
++++ b/OpenROAD-3D/flow/scripts/cts.tcl
+@@ -134,16 +134,25 @@ if { [info exists ::env(HOLD_SLACK_MARGIN)] && $::env(HOLD_SLACK_MARGIN) > 0.0}
+ 
+ puts "TNS end percent $::env(TNS_END_PERCENT)"
+ append additional_args " -repair_tns $::env(TNS_END_PERCENT)"
++# Give repair_timing a small explicit setup margin so that near-critical
++# endpoints (which dominate TNS) are pulled positive instead of left at
++# exactly zero slack, where propagated-clock skew after CTS can push them
++# negative again.
++if { ![info exists ::env(SETUP_SLACK_MARGIN)] || $::env(SETUP_SLACK_MARGIN) <= 0.0 } {
++  set ::env(SETUP_SLACK_MARGIN) 0.02
++  puts "Defaulting setup slack margin to $::env(SETUP_SLACK_MARGIN)"
++  append additional_args " -setup_margin $::env(SETUP_SLACK_MARGIN)"
++}
+ 
+ if { [info exists ::env(SKIP_PIN_SWAP)] } {
+   puts "Skipping pin swapping during optimization"
+   append additional_args " -skip_pin_swap"
+ }
+ 
+-if { [info exists ::env(SKIP_GATE_CLONING)] } {
+-  puts "Skipping gate cloning during optimization"
+-  append additional_args " -skip_gate_cloning"
+-}
++# NOTE: gate cloning is intentionally kept enabled here (the per-design
++# SKIP_GATE_CLONING setting is ignored) because cloning high-fanout drivers
++# on critical paths is one of the few levers that reduces WNS/TNS after
++# propagated clocks without adding cross-tier detours.
+ 
+ 
+ if {$env(PLATFORM) ne "nangate45_3D"} {

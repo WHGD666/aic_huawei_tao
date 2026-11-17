@@ -120,6 +120,7 @@ class Harness:
         self.gate = Gate(wl_path, cfg["gate"]["forbidden_patterns"],
                          cfg["gate"].get("run_pyflakes", True), cfg["gate"].get("smoke_test_cmd", ""),
                          case_names=list(e.get("cases", [])))
+        self.gate.baseline_root = self.base_root
 
         # ---- 评估器（fail-fast：非 mock 必须有命令） ----
         mode = e["mode"]
@@ -301,8 +302,8 @@ class Harness:
                     rep.ok = False
         return full, [], rep, patch
 
-    # probe 阶段按菜单轮换检索焦点（对应 docs/knob_catalog.md 与 prompts/phase_probe.md）
-    PROBE_KEYWORDS = [
+    # probe 阶段按菜单轮换检索焦点（对应 docs/knob_catalog.md 与 prompts/phase_probe*.md）
+    PROBE_KEYWORDS_PP = [
         ["net_weight", "timing", "criticality", "timing_opt"],
         ["edge_weight", "cut", "contrastive", "neighbors", "lam"],
         ["target_density", "density_weight", "padding", "utilization"],
@@ -310,7 +311,26 @@ class Harness:
         ["wirelength", "hpwl", "gamma", "weighted_average"],
         ["num_epochs", "learning_rate", "embedding_dim", "hidden_dim"],
     ]
-    DEFAULT_KW = ["timing", "weight", "partition", "density", "wirelength", "slack"]
+    # full_flow：六环节轮换，Tcl/mk 旋钮用它们在脚本里的真实标识符检索
+    PROBE_KEYWORDS_FF = [
+        ["repair_timing", "repair_tns", "setup_margin", "TNS_END_PERCENT", "skip_pin_swap"],       # 时序优化
+        ["clock_tree_synthesis", "sink_clustering", "CTS_CLUSTER", "balance_levels", "root_buf"],  # CTS
+        ["global_route", "congestion_iterations", "critical_nets_percentage", "layer_adjustment", "GLOBAL_ROUTE_ARGS"],  # GRT
+        ["net_weight", "timing", "criticality", "timing_opt"],                                       # 布局
+        ["edge_weight", "cut", "contrastive", "balance", "lam"],                                     # 切分
+        ["repair_design", "max_wire_length", "slew_margin", "cap_margin", "set_dont_use", "DONT_USE"],  # DRV / 单元集
+        ["detailed_placement", "max_displacement", "hbt", "terminal", "pitch"],                      # 合法化 / HBT
+    ]
+    DEFAULT_KW_PP = ["timing", "weight", "partition", "density", "wirelength", "slack"]
+    DEFAULT_KW_FF = ["timing", "repair", "clock", "route", "congestion", "weight"]
+
+    @property
+    def PROBE_KEYWORDS(self):
+        return self.PROBE_KEYWORDS_FF if self.full_flow else self.PROBE_KEYWORDS_PP
+
+    @property
+    def DEFAULT_KW(self):
+        return self.DEFAULT_KW_FF if self.full_flow else self.DEFAULT_KW_PP
 
     # ---------- one round ----------
     def round(self, idx: int) -> Optional[CandidateMeta]:

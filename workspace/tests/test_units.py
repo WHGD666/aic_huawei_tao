@@ -296,12 +296,19 @@ def test_gate_per_design_consistency(tmp_path):
     wlf = tmp_path / "wl.yaml"
     wlf.write_text(yaml.safe_dump({"allowed": ["cfg/*.json"], "per_design": ["cfg/*.json"], "denied": []}), encoding="utf-8")
     g = Gate(wlf, [], run_pyflakes=False)
-    base = {"cfg/a.json": '{"d": 0.4}\n', "cfg/b.json": '{"d": 0.4}\n'}
-    same = {"cfg/a.json": '{"d": 0.5}\n', "cfg/b.json": '{"d": 0.5}\n'}
-    diff = {"cfg/a.json": '{"d": 0.5}\n', "cfg/b.json": '{"d": 0.4}\n'}
+    (tmp_path / "base" / "cfg").mkdir(parents=True)
+    for n in ("a", "b", "c"):
+        (tmp_path / "base" / "cfg" / f"{n}.json").write_text('{"d": 0.4}\n')
+    g.baseline_root = tmp_path / "base"
+    base = {f"cfg/{n}.json": '{"d": 0.4}\n' for n in "abc"}
+    same = {f"cfg/{n}.json": '{"d": 0.5}\n' for n in "abc"}
+    diff = {"cfg/a.json": '{"d": 0.5}\n', "cfg/b.json": '{"d": 0.4}\n', "cfg/c.json": '{"d": 0.5}\n'}
+    only_one = {"cfg/a.json": '{"d": 0.5}\n'}
     assert g.check(same, "", baseline_files=base).ok
     r = g.check(diff, "", baseline_files=base)
-    assert not r.ok and any("per-design" in e for e in r.errors)
+    assert not r.ok and any("different edits" in e for e in r.errors)
+    r2 = g.check(only_one, "", baseline_files=base)
+    assert not r2.ok and any("but not" in e for e in r2.errors)
 
 
 def test_store_new_id_after_deletion(tmp_path):

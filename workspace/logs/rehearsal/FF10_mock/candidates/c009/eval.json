@@ -1,0 +1,98 @@
+{
+ "candidate_id": "c009",
+ "wall_s": 9.489059448242188e-05,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "KeyError in partition"
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": -0.3371798557783205,
+   "tns": -113.08226969680031,
+   "overflow": 220.85523587225433,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": -0.37067080617168663,
+   "tns": -139.37460627357228,
+   "overflow": 142.27188567389584,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": -0.5087057774517556,
+   "tns": -485.8994890941283,
+   "overflow": 171.9083841566793,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": -0.45294759606979834,
+   "tns": -262.58408403743056,
+   "overflow": 150.97004763332495,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": -0.4975603183925279,
+   "tns": -531.8995344956431,
+   "overflow": 209.3398111235674,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": -0.6736155890981822,
+   "tns": -651.7309051597425,
+   "overflow": 173.60557694527446,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": -0.8297354750944416,
+   "tns": -887.8793726036407,
+   "overflow": 187.25962872543795,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": -0.752859192195011,
+   "tns": -890.3162714757644,
+   "overflow": 133.98093528148178,
+   "valid": true,
+   "fail_reason": ""
+  }
+ },
+ "stage_logs": {
+  "bp_fe-ng45/1001": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n",
+  "bp_fe-ng45/1002": "[INFO] wns=-0.337 tns=-113.1 overflow=221\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.371 tns=-139.4 overflow=142\n",
+  "bp-ng45/1001": "[INFO] wns=-0.509 tns=-485.9 overflow=172\n",
+  "bp-ng45/1002": "[INFO] wns=-0.453 tns=-262.6 overflow=151\n",
+  "bp-ng45/1003": "[INFO] wns=-0.498 tns=-531.9 overflow=209\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.674 tns=-651.7 overflow=174\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.830 tns=-887.9 overflow=187\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.753 tns=-890.3 overflow=134\n"
+ }
+}

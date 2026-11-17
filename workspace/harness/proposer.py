@@ -95,6 +95,13 @@ class Proposer:
             .replace("{OUTLINE}", codebase.outline())
         )
 
+    def _phase_guide(self, phase: str) -> str:
+        """优先任务专属指引 phase_<phase>_<task>.md，否则通用 phase_<phase>.md。"""
+        for name in (f"phase_{phase}_{self.task}.md", f"phase_{phase}.md"):
+            if (PROMPTS_DIR / name).exists():
+                return _load(name)
+        return ""
+
     def precheck(self, prop: Proposal, chunks=None) -> List[str]:
         """免费的本地预检：SEARCH 必须出现在本轮展示过的代码片段里（否则多半是模型凭记忆编的）。
         chunks 显式传入（build_messages 的返回值）；不传则用 last_chunks。"""
@@ -154,7 +161,7 @@ class Proposer:
         user = (
             _load("propose.md")
             .replace("{PHASE}", phase)
-            .replace("{PHASE_GUIDE}", _load(f"phase_{phase}.md") if (PROMPTS_DIR / f"phase_{phase}.md").exists() else "")
+            .replace("{PHASE_GUIDE}", self._phase_guide(phase))
             .replace("{PROFILE}", problem_profile)
             .replace("{HISTORY}", history_digest)
             .replace("{PARENT_PATCH}", parent_patch or "(starting from official baseline)")

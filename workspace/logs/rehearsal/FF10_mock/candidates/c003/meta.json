@@ -1,0 +1,36 @@
+{
+ "id": "c003",
+ "parent": "c002",
+ "hypothesis": "The parent bumped CTS sink-cluster diameter/size, which made the clock tree worse. Revert that and instead disable CTS sink clustering entirely (cluster_size 1 / diameter small) so CTS builds a balanced H-tree with per-sink buffering; this reduces long clock detours and buffer-induced congestion, lowering propagated-clock WNS/TNS without increasing overflow.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "structural",
+ "created_at": 1794922159.12554,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.044246281649287886,
+ "score_robust": -0.019348578843928127,
+ "per_case": {
+  "bp_fe-ng45": 0.007968565681433845,
+  "bp-ng45": 0.05948452944725458,
+  "ariane133-ng45": -0.023206813479400543
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "Mixed: hypothesis only partly holds. Ariane133-ng45 improves TNS (-8.8%) but WNS worsens (+6.8%), and bp_fe-ng45 WNS degrades (+7.0%) despite TNS gain—suggesting disabling clustering helps some sinks but hurts critical paths, plausibly from added per-sink buffering/detour on tight paths. bp-ng45 improves both. Robust score is negative (-0.019), so the change is not a clear win. Next step: apply clustering disable selectively (e.g., only non-critical sink groups or cap cluster diameter) and re-run to isolate the WNS regression on ariane/bp_fe.",
+ "llm_cost_cny": 0.0038142,
+ "eval_wall_s": 9.226799011230469e-05,
+ "tags": [
+  "CTS_CLUSTER_SIZE",
+  "CTS_CLUSTER_DIAMETER",
+  "clock_tree_synthesis",
+  "sink_clustering_enable",
+  "repair_timing",
+  "global_route",
+  "DONT_USE_CELLS"
+ ],
+ "max_overflow": 176.87428928934744,
+ "prompt_chars": 15369
+}

@@ -1,0 +1,36 @@
+{
+ "id": "c002",
+ "parent": null,
+ "hypothesis": "Enabling CTS sink clustering with a larger max diameter (200um instead of 100um) and larger cluster size (40 instead of 30) reduces clock tree buffer count and clock net routing demand, lowering global-route overflow while also shortening clock insertion delay variance so propagated-clock setup slack improves on all circuits — a CTS-stage (C1) probe independent of the partitioner.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "probe",
+ "created_at": 1794922155.163712,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": -0.127351807874752,
+ "score_robust": -0.05964604981970571,
+ "per_case": {
+  "bp_fe-ng45": -0.018134733986617673,
+  "bp-ng45": -0.05488961632226719,
+  "ariane133-ng45": -0.054327457565867134
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis failed: all three cases show negative scores and worse WNS/TNS (dWNS −3.3% to −3.6%), with overflow still ~130–151, so larger sink clustering did not reduce buffer/routing demand or improve setup slack. The mechanism likely backfired—bigger clusters (40, 200µm) increase skew and insertion-delay spread rather than shorten it, hurting propagated-clock setup. Next step: sweep intermediate diameters (120–150µm) and cluster sizes (32–36) per case, and check clock skew/insertion-delay variance directly at C1 to confirm whether the clustering granularity is the true driver before retesting.",
+ "llm_cost_cny": 0.0028924,
+ "eval_wall_s": 8.535385131835938e-05,
+ "tags": [
+  "CTS_CLUSTER_SIZE",
+  "CTS_CLUSTER_DIAMETER",
+  "clock_tree_synthesis",
+  "sink_clustering",
+  "global_route.tcl",
+  "fastroute.tcl",
+  "repair_clock_nets"
+ ],
+ "max_overflow": 197.24461830123687,
+ "prompt_chars": 15212
+}

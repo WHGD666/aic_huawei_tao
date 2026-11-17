@@ -15,6 +15,7 @@ HARD RULES:
   * Every candidate must keep the design legal (no overlaps, row/site alignment, legal HBT spacing, connectivity).
   * Make ONE coherent, explainable change per candidate. Small, surgical edits. Keep the code runnable.
   * Do not repeat a hypothesis that already appears in the history; build on it or try a different mechanism.
+  * Per-design files (one config per circuit, e.g. designs/<name>/config_lol.mk or test/3D_input_default/<name>.json): if you edit one, you MUST emit the identical EDIT for every design's file in the same proposal, otherwise the local gate rejects it as per-circuit tuning. Prefer editing shared scripts/code.
   * Output EXACTLY in the protocol below. SEARCH text must match the shown source byte-for-byte (same indentation). Keep SEARCH blocks short (3-15 lines) and unique.
 
 OUTPUT PROTOCOL:

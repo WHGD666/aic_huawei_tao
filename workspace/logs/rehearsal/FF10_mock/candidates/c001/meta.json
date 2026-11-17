@@ -1,0 +1,39 @@
+{
+ "id": "c001",
+ "parent": null,
+ "hypothesis": "The baseline sets `TNS_END_PERCENT = 100` and `SKIP_GATE_CLONING = 1` in every 3D config, which forces rsz to chase every violating endpoint (including tiny-slack ones far from critical) while forbidding gate cloning that would widen the worst paths; raising the timing-repair effort in the shared CTS script by adding a small setup margin and a bounded TNS end percent should reduce both the number of moderate violations (TNS) and the worst path (WNS) without touching placement/partition, and is applied identically to all designs.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "probe",
+ "created_at": 1794922149.428539,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:KeyError in partition",
+  "bp_fe-ng45/1002:HBT min-spacing violation",
+  "bp_fe-ng45/1003:KeyError in partition",
+  "bp-ng45/1001:stage timeout",
+  "bp-ng45/1002:legalization overlap",
+  "bp-ng45/1003:stage timeout"
+ ],
+ "analysis": "Invalid: mixed legality (HBT min-spacing, legalization overlap), crash (KeyError in partition), and timeout failures across all seeds of both cases—systematic, not sporadic. The candidate says nothing about the hypothesis. To make the idea legal: guard the partition KeyError (missing config key), relax/repair min-spacing and legalization after the added setup margin, and bound TNS effort to avoid stage timeouts. Next: rerun with these fixes and per-stage time budgets before judging TNS/WNS impact.",
+ "llm_cost_cny": 0.0062316,
+ "eval_wall_s": 6.4849853515625e-05,
+ "tags": [
+  "TNS_END_PERCENT",
+  "SETUP_SLACK_MARGIN",
+  "SKIP_GATE_CLONING",
+  "repair_timing",
+  "resize.tcl",
+  "cts.tcl",
+  "global_route.tcl"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 16379
+}

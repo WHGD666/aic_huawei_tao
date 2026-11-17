@@ -1,0 +1,30 @@
+{"t": 1794922149.428752, "event": "create", "id": "c001", "parent": null, "phase": "probe", "hypothesis": "(proposing)"}
+{"t": 1794922153.4133723, "event": "proposed", "id": "c001", "status": "proposed", "score": null}
+{"t": 1794922155.1626804, "event": "evaluated", "id": "c001", "status": "invalid", "score": null}
+{"t": 1794922155.1638978, "event": "create", "id": "c002", "parent": null, "phase": "probe", "hypothesis": "(proposing)"}
+{"t": 1794922157.4210634, "event": "proposed", "id": "c002", "status": "proposed", "score": null}
+{"t": 1794922159.1237822, "event": "evaluated", "id": "c002", "status": "evaluated", "score": -0.127351807874752}
+{"t": 1794922159.1257665, "event": "create", "id": "c003", "parent": "c002", "phase": "structural", "hypothesis": "(proposing)"}
+{"t": 1794922162.9965954, "event": "proposed", "id": "c003", "status": "proposed", "score": null}
+{"t": 1794922165.2328186, "event": "evaluated", "id": "c003", "status": "evaluated", "score": 0.044246281649287886}
+{"t": 1794922165.2344117, "event": "create", "id": "c004", "parent": "c002", "phase": "structural", "hypothesis": "(proposing)"}
+{"t": 1794922168.103461, "event": "proposed", "id": "c004", "status": "proposed", "score": null}
+{"t": 1794922170.2456946, "event": "evaluated", "id": "c004", "status": "evaluated", "score": 0.009624209003856993}
+{"t": 1794922170.24706, "event": "create", "id": "c005", "parent": "c004", "phase": "structural", "hypothesis": "(proposing)"}
+{"t": 1794922172.6809242, "event": "proposed", "id": "c005", "status": "proposed", "score": null}
+{"t": 1794922174.4064703, "event": "evaluated", "id": "c005", "status": "invalid", "score": null}
+{"t": 1794922174.4078894, "event": "create", "id": "c006", "parent": "c003", "phase": "structural", "hypothesis": "(proposing)"}
+{"t": 1794922182.0572906, "event": "proposed", "id": "c006", "status": "proposed", "score": null}
+{"t": 1794922183.8058417, "event": "evaluated", "id": "c006", "status": "evaluated", "score": 0.22861711978568094}
+{"t": 1794922183.8073587, "event": "create", "id": "c007", "parent": "c003", "phase": "combine", "hypothesis": "(proposing)"}
+{"t": 1794922186.27477, "event": "proposed", "id": "c007", "status": "proposed", "score": null}
+{"t": 1794922188.2322714, "event": "evaluated", "id": "c007", "status": "evaluated", "score": -0.0570977443878659}
+{"t": 1794922188.2337334, "event": "create", "id": "c008", "parent": "c003", "phase": "combine", "hypothesis": "(proposing)"}
+{"t": 1794922191.2865067, "event": "proposed", "id": "c008", "status": "proposed", "score": null}
+{"t": 1794922192.5905504, "event": "evaluated", "id": "c008", "status": "invalid", "score": null}
+{"t": 1794922192.592154, "event": "create", "id": "c009", "parent": "c006", "phase": "final", "hypothesis": "(proposing)"}
+{"t": 1794922194.9979339, "event": "proposed", "id": "c009", "status": "proposed", "score": null}
+{"t": 1794922196.4753659, "event": "evaluated", "id": "c009", "status": "invalid", "score": null}
+{"t": 1794922196.4769912, "event": "create", "id": "c010", "parent": "c006", "phase": "final", "hypothesis": "(proposing)"}
+{"t": 1794922199.093659, "event": "proposed", "id": "c010", "status": "proposed", "score": null}
+{"t": 1794922200.4752548, "event": "evaluated", "id": "c010", "status": "evaluated", "score": 0.3485231869999018}

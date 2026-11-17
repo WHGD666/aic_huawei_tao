@@ -1,0 +1,34 @@
+{
+ "id": "c004",
+ "parent": "c002",
+ "hypothesis": "Disable CTS sink clustering (size/diameter = 0) so the clock tree is built without clustering-induced detours and extra buffers; this reduces clock insertion delay/skew and clock-buffer congestion, leaving more routing resources and slack headroom for the propagated-clock setup paths that determine full-flow WNS/TNS, while keeping overflow well under 300.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "structural",
+ "created_at": 1794922165.2342021,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.009624209003856993,
+ "score_robust": -0.03223869047381696,
+ "per_case": {
+  "bp_fe-ng45": 0.04925906395416774,
+  "bp-ng45": -0.0026654989899848763,
+  "ariane133-ng45": -0.03696935596032587
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "Hypothesis not supported: disabling CTS sink clustering worsened WNS in all three cases (dWNS −15.8%, −8.9%, −3.1%), with only TNS improving slightly (+4.5%, +5.6%, +10.1%) and overflow staying low (~99–122). The WNS degradation suggests removing clustering increased clock insertion delay/skew or buffer count rather than reducing detours, hurting propagated-clock setup paths. Next step: sweep small nonzero size/diameter values (e.g., 5–20 µm) to retain clustering benefits while trimming detours, and re-evaluate WNS/TNS.",
+ "llm_cost_cny": 0.0029362,
+ "eval_wall_s": 0.00011801719665527344,
+ "tags": [
+  "CTS_CLUSTER_SIZE",
+  "CTS_CLUSTER_DIAMETER",
+  "sink_clustering_enable",
+  "CTS_BUF_DISTANCE",
+  "clock_tree_synthesis"
+ ],
+ "max_overflow": 155.78633763154852,
+ "prompt_chars": 15817
+}

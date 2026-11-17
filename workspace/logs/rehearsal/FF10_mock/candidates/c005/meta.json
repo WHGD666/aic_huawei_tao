@@ -1,0 +1,36 @@
+{
+ "id": "c005",
+ "parent": "c004",
+ "hypothesis": "The parent disabled CTS sink clustering entirely (size/diameter = 0), which improved TNS but degraded WNS. A middle ground — restore a modest sink-cluster size/diameter (smaller than the baseline's 30/100 but non-zero, e.g. 10/50) — should keep the TNS benefit of less aggressive clustering while recovering the WNS loss by giving CTS enough grouping to build a shorter, more balanced clock tree, reducing propagated-clock setup violations across all circuits.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "structural",
+ "created_at": 1794922170.2468078,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {
+  "bp_fe-ng45": -0.11288918980375151,
+  "bp-ng45": 0.058849201873803984,
+  "ariane133-ng45": 0.05500809328910728
+ },
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1002:KeyError in partition"
+ ],
+ "analysis": "Crash failure (KeyError in partition) on bp_fe-ng45/1002; only one seed listed, so likely sporadic but unconfirmed—invalid run says nothing about the hypothesis. Among valid runs, hypothesis partly holds: ariane133 and bp show WNS/TNS gains, but bp_fe shows WNS +4.8% yet TNS −24.8%, contradicting the \"keep TNS benefit\" claim. Mechanism: modest clustering helps clock balance (WNS) but bp_fe's TNS regresses, possibly from residual skew/setup paths. Next step: fix the partition KeyError (guard missing partition keys) and rerun all seeds to confirm whether bp_fe TNS loss is real before tuning size/diameter.",
+ "llm_cost_cny": 0.003099,
+ "eval_wall_s": 8.440017700195312e-05,
+ "tags": [
+  "CTS_CLUSTER_SIZE",
+  "CTS_CLUSTER_DIAMETER",
+  "sink_clustering",
+  "repair_clock_nets",
+  "balance_levels"
+ ],
+ "max_overflow": 152.65805687398867,
+ "prompt_chars": 16259
+}

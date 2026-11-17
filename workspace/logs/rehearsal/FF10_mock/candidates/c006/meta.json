@@ -1,0 +1,37 @@
+{
+ "id": "c006",
+ "parent": "c003",
+ "hypothesis": "The parent (c003) reverted CTS clustering to size=1/diameter=50 and gained mostly on TNS. The remaining large TNS after propagated-clock global routing comes from setup violations that rsz cannot fix because all *_upper BUF/CLKBUF cells are in DONT_USE_CELLS — so upper-tier critical logic has no repair buffers. Allowing the upper-tier clock/data buffers (by removing only the `*_upper` BUF/CLKBUF entries from DONT_USE_CELLS in the shared resize.tcl) gives rsz repair capacity on both tiers, which should reduce many moderate violations (TNS) without changing partition or routing topology, and should not increase overflow beyond the 300 cap because buffers are inserted only along failing paths.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "structural",
+ "created_at": 1794922174.4077055,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.22861711978568094,
+ "score_robust": 0.05212335748775694,
+ "per_case": {
+  "bp_fe-ng45": 0.053577539050869365,
+  "bp-ng45": 0.06547633707647484,
+  "ariane133-ng45": 0.10956324365833675
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with TNS gains (6–15%) exceeding WNS gains (2.6–4.7%), consistent with rsz repairing many moderate upper-tier violations. Ariane133-ng45 moved most (dTNS +15.1%), and overflow stayed well under the 300 cap (~182–232), confirming buffers inserted only along failing paths without disturbing partition/routing. Next step: verify the DONT_USE edit is scoped to only `*_upper` BUF/CLKBUF entries (no lower-tier or non-buffer cells removed) and re-run across more seeds to confirm robustness.",
+ "llm_cost_cny": 0.0065158,
+ "eval_wall_s": 0.0001220703125,
+ "tags": [
+  "DONT_USE_CELLS",
+  "repair_design",
+  "repair_timing",
+  "resize.tcl",
+  "_upper",
+  "BUF",
+  "CLKBUF",
+  "set_dont_use"
+ ],
+ "max_overflow": 269.85886068530607,
+ "prompt_chars": 19199
+}

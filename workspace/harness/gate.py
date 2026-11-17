@@ -247,26 +247,45 @@ class Gate:
                     rep.warnings.append(f"added line mentions PDK token '{pm.group(1)}': {stripped[:80]}")
 
     def _check_per_design_consistency(self, files: Dict[str, str], baseline: Dict[str, str], rep: GateReport) -> None:
-        """白名单 per_design 下的文件：若改了其中一个，则所有同类文件的 diff 必须一致（同样的 SEARCH→REPLACE），否则就是按算例调参。
-        实现：把每个被改文件相对基线的 'added lines 集合' 比较；只要 per_design 组里有文件被改而其它没被改，或 added 集不同 -> 错误。"""
+        """白名单 per_design 下的文件按 glob 分组：**候选改了组内任一文件，就必须改组内全部文件，且 added-lines 集合完全一致**。
+        只改一个算例的配置 = 按算例调参（题面禁止，且对隐藏算例不泛化）。
+        组的全集来自基线目录（self.baseline_root 由 loop 注入；缺省时只比较候选里出现的文件）。"""
         if not self.per_design:
             return
-        groups: Dict[str, List[str]] = {}
-        for f in files:
-            for g in self.per_design:
-                if glob_match(f, g):
-                    groups.setdefault(g, []).append(f)
-        for g, changed in groups.items():
-            import difflib
+        import difflib
+        for g in self.per_design:
+            changed = [f for f in files if glob_match(f, g)]
+            if not changed:
+                continue
+            universe = sorted(set(changed) | set(self._per_design_universe(g)))
+            missing = [f for f in universe if f not in files]
+            if missing:
+                rep.errors.append(f"per-design group '{g}': edited {', '.join(Path(f).parent.name for f in changed)} but not "
+                                  f"{', '.join(Path(f).parent.name for f in missing)}; per-circuit tuning is not allowed — "
+                                  f"apply the identical change to every design's file, or edit shared code instead")
+                continue
             added = {}
             for f in changed:
                 b = baseline.get(f, "").splitlines()
                 n = files[f].splitlines()
-                added[f] = tuple(l for l in difflib.unified_diff(b, n, lineterm="", n=0) if l.startswith("+") and not l.startswith("+++"))
-            vals = set(added.values())
-            if len(vals) > 1:
-                rep.errors.append(f"per-design files under '{g}' received different edits ({', '.join(Path(f).name for f in changed)}); "
-                                  f"per-circuit tuning is not allowed — apply the identical change to every design or edit shared code instead")
+                added[f] = tuple(sorted(l.strip() for l in difflib.unified_diff(b, n, lineterm="", n=0)
+                                        if l.startswith("+") and not l.startswith("+++")))
+            if len(set(added.values())) > 1:
+                rep.errors.append(f"per-design group '{g}': files received different edits ({', '.join(Path(f).parent.name for f in changed)}); "
+                                  f"the added lines must be identical across designs")
+
+    baseline_root: Optional[Path] = None   # loop 注入，用于枚举 per_design 组的全集
+
+    def _per_design_universe(self, g: str) -> List[str]:
+        if self.baseline_root is None or not self.baseline_root.exists():
+            return []
+        out = []
+        for p in self.baseline_root.rglob("*"):
+            if p.is_file():
+                rel = str(p.relative_to(self.baseline_root)).replace("\\", "/")
+                if glob_match(rel, g):
+                    out.append(rel)
+        return out
 
     def _check_forbidden(self, patch: str, rep: GateReport) -> None:
         for ln in patch.splitlines():

@@ -1,0 +1,37 @@
+{
+ "id": "c009",
+ "parent": "c006",
+ "hypothesis": "The parent (c006) gained by shrinking CTS sink clustering (size=1, diameter=50) and by allowing upper-tier buffers in the dont-use list; the final phase asks for a conservative refinement only. The analysis of c007 showed that *increasing* the cluster diameter (x2) hurt, so the safe direction is to shrink the remaining clustering aggressiveness slightly further: scale the sink-clustering diameter down by x0.7 (50 -> 35) while keeping cluster size=1 and keeping the upper-tier buffer enablement untouched, so the clock tree has even tighter sinks and less induced buffer/routing demand, reducing moderate violations that rsz must repair.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl"
+ ],
+ "phase": "final",
+ "created_at": 1794922192.5919368,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {
+  "bp_fe-ng45": -0.05033075290829476,
+  "bp-ng45": 0.11546716268771247,
+  "ariane133-ng45": 0.10960967887737855
+ },
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:KeyError in partition"
+ ],
+ "analysis": "Crash failure: bp_fe-ng45/1001 hit a KeyError in partition, and since only one seed is listed it looks sporadic rather than systematic. An invalid candidate says nothing about the hypothesis. To make the idea legal, guard the partition lookup against missing sink/cluster keys (or validate cluster membership before partitioning) and rerun all seeds. If it then passes, the two positive cases (ariane133, bp) suggest tighter clustering helps, but bp_fe's negative score warns the effect is design-dependent.",
+ "llm_cost_cny": 0.0052932,
+ "eval_wall_s": 9.489059448242188e-05,
+ "tags": [
+  "cts.tcl",
+  "sink_clustering_max_diameter",
+  "clock_tree_synthesis",
+  "DONT_USE_CELLS",
+  "repair_clock_nets",
+  "global_route.tcl"
+ ],
+ "max_overflow": 220.85523587225433,
+ "prompt_chars": 21797
+}

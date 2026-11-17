@@ -1,0 +1,34 @@
+diff --git a/OpenROAD-3D/flow/scripts/cts.tcl b/OpenROAD-3D/flow/scripts/cts.tcl
+--- a/OpenROAD-3D/flow/scripts/cts.tcl
++++ b/OpenROAD-3D/flow/scripts/cts.tcl
+@@ -16,7 +16,7 @@ if {[info exist ::env(CTS_CLUSTER_SIZE)]} {
+ if {[info exist ::env(CTS_CLUSTER_DIAMETER)]} {
+   set cluster_diameter "$::env(CTS_CLUSTER_DIAMETER)"
+ } else {
+-  set cluster_diameter 100
++  set cluster_diameter 50
+ }
+ 
+ proc save_progress {stage} {
+@@ -47,7 +47,20 @@ if {[info exist ::env(CTS_SNAPSHOTS)]} {
+ 
+ set_propagated_clock [all_clocks]
+ 
+-set_dont_use $::env(DONT_USE_CELLS)
++# Allow upper-tier repair buffers: the default DONT_USE_CELLS forbids all
++# *_upper BUF/CLKBUF cells, which leaves upper-tier critical logic without
++# any buffer resources for repair. Remove only upper-tier buffer cells from
++# the dont-use list (pattern-based, no per-cell hardcoding).
++set filtered_dont_use {}
++foreach cell $::env(DONT_USE_CELLS) {
++  if {[string match "*_upper" $cell] && \
++      ([string match "*BUF*" $cell] || [string match "*CLKBUF*" $cell])} {
++    puts "Allowing upper-tier repair buffer $cell (removed from DONT_USE_CELLS)"
++  } else {
++    lappend filtered_dont_use $cell
++  }
++}
++set_dont_use $filtered_dont_use
+ 
+ utl::push_metrics_stage "cts__{}__pre_repair"
+ 

@@ -1,0 +1,40 @@
+{
+ "id": "c008",
+ "parent": "c003",
+ "hypothesis": "The best candidate (c006, CTS cluster_size=1/diameter=50) reduced upper-tier moderate violations by making the clock tree flatter; combine it with a second independent, already-validated-in-spirit mechanism — relaxing global-route congestion iterations so GRT converges to a lower-overflow solution (overflow is a hard constraint and routed parasitics feed the final STA) — by raising congestion_iterations from 2 to 4 in the shared global_route.tcl, which reduces detoured/overflowing nets and thus improves post-route parasitics without touching per-circuit knobs.",
+ "expected_effect": "",
+ "files_changed": [
+  "OpenROAD-3D/flow/scripts/cts.tcl",
+  "OpenROAD-3D/flow/scripts/global_route.tcl"
+ ],
+ "phase": "combine",
+ "created_at": 1794922188.2335415,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:stage timeout",
+  "bp_fe-ng45/1003:KeyError in partition",
+  "bp-ng45/1001:stage timeout",
+  "bp-ng45/1002:HBT min-spacing violation",
+  "bp-ng45/1003:KeyError in partition"
+ ],
+ "analysis": "Invalid: mixed timeout (bp_fe-ng45 1001/1002, bp-ng45 1001), crash (KeyError in partition, 1003 both), and legality (HBT min-spacing, bp-ng45 1002). Timeouts hit all seeds of two cases → systematic; KeyErrors also systematic per case. So this candidate says nothing about the hypothesis. Likely the raised congestion_iterations blew runtime and perturbed partitioning/legality. Make it legal: keep iterations=4 but add a GRT runtime cap/early-exit on overflow convergence, and gate the change behind a per-design check so partition/HBT cases aren't affected; rerun.",
+ "llm_cost_cny": 0.0039666,
+ "eval_wall_s": 7.653236389160156e-05,
+ "tags": [
+  "GLOBAL_ROUTE_ARGS",
+  "congestion_iterations",
+  "set_global_routing_layer_adjustment",
+  "MIN_ROUTING_LAYER",
+  "MAX_ROUTING_LAYER",
+  "CTS_CLUSTER_SIZE",
+  "CTS_CLUSTER_DIAMETER"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 19535
+}
