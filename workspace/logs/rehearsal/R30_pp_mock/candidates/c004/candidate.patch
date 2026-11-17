@@ -1,5 +1,4 @@
 diff --git a/Place-MoL/src/partition/GNN/GNN_partition.py b/Place-MoL/src/partition/GNN/GNN_partition.py
-index 6b6cc31..b316b88 100755
 --- a/Place-MoL/src/partition/GNN/GNN_partition.py
 +++ b/Place-MoL/src/partition/GNN/GNN_partition.py
 @@ -519,7 +519,7 @@ def gnn_partition(
@@ -7,7 +6,7 @@ index 6b6cc31..b316b88 100755
      device='cpu',
      n_clusters=2,
 -    area_balance_error=0.1
-+    area_balance_error=0.05
++    area_balance_error=0.15
  ) -> Dict:
      """
      Perform GNN-based partition.

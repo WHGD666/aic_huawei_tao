@@ -1,36 +1,37 @@
 {
  "id": "c009",
- "parent": null,
- "hypothesis": "The density-weight multiplicative update band `[LOWER_PCOF, UPPER_PCOF]` and its HPWL-ratio exponent control how fast density pressure ramps; widening the lower bound so the weight can also *decrease* when HPWL worsens (currently it is clamped to a narrow band that mostly grows) will let the placer spend more iterations on wirelength/timing before density dominates, giving rsz more slack headroom on moderately-critical nets (TNS).",
- "expected_effect": "WNS slightly better or neutral, TNS improves (fewer moderate violations), overflow unchanged (still <=300), runtime unchanged.",
+ "parent": "c008",
+ "hypothesis": "Building on c007 (timing-driven net weighting enabled, +0.423), the partitioner currently only balances total area; extending `_refine_partition_by_area`'s tolerance to 0.20 (c008) helped ariane but hurt the others because it lets the refinement stop early. Instead, keep area_balance_error at the baseline 0.10 (c008's loosening was the regression source) and additionally let the refinement *overshoot* balance only when it reduces the number of macros moved — i.e. tighten the loop by preferring the single largest-area swap that lands within tolerance rather than the first improving one. This reduces needless macro flips that scatter critical macros across tiers, keeping timing-driven placement's critical nets short.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
  ],
- "phase": "probe",
- "created_at": 1794906233.9896224,
- "status": "evaluated",
+ "phase": "structural",
+ "created_at": 1794921627.4016595,
+ "status": "invalid",
  "gate_report": "OK",
- "score_total": 0.45655028795103114,
- "score_robust": 0.08440657607464726,
- "per_case": {
-  "bp_fe-ng45": 0.1287675848142814,
-  "bp-ng45": 0.2443856148597626,
-  "ariane133-ng45": 0.0833970882769871
- },
- "all_valid": true,
- "fail_reasons": [],
- "analysis": "The hypothesis held: all three cases improved, with dTNS gains of +10.0%, +30.5%, and +15.7% and dWNS gains of +5.9%, +15.3%, and +9.0%, consistent with the proposed mechanism—allowing the density weight to decrease when HPWL worsens lets the placer prioritize wirelength/timing longer, giving rsz more slack headroom on critical nets. Overflow (~116–140) stayed moderate, so gains aren't from density collapse. Next step: sweep the widened lower bound (e.g., 0.5×, 0.25× current LOWER_PCOF) and the HPWL-ratio exponent across seeds to confirm robustness and find the best trade-off before adopting.",
- "llm_cost_cny": 0.0037846,
- "eval_wall_s": 0.0001354217529296875,
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:legalization overlap",
+  "bp_fe-ng45/1002:stage timeout",
+  "bp_fe-ng45/1003:HBT min-spacing violation",
+  "bp-ng45/1001:HBT min-spacing violation",
+  "bp-ng45/1002:legalization overlap",
+  "bp-ng45/1003:legalization overlap"
+ ],
+ "analysis": "Invalid: legality failures (legalization overlap, HBT min-spacing) plus one stage timeout, spanning all seeds of both bp_fe-ng45 and bp-ng45 — systematic, so this candidate says nothing about the hypothesis. Likely the tighter tolerance/overshoot logic produces placements the legalizer can't resolve. To make the idea legal: keep area_balance_error at 0.10 but gate the \"prefer largest-area swap\" rule behind a post-refine legality check, and add a fallback that reverts to the first-improving swap if legalization fails. Re-run before judging timing.",
+ "llm_cost_cny": 0.0044042,
+ "eval_wall_s": 6.628036499023438e-05,
  "tags": [
-  "LOWER_PCOF",
-  "UPPER_PCOF",
-  "density_weight",
-  "update_density_weight_op_hpwl",
-  "stop_overflow",
-  "PlaceObj.build_update_density_weight",
-  "NonLinearPlace"
+  "_refine_partition_by_area",
+  "area_balance_error",
+  "gnn_partition",
+  "TimingOpt.update_net_weights",
+  "timing_opt_flag"
  ],
  "max_overflow": null,
- "prompt_chars": 20291
+ "prompt_chars": 19830
 }

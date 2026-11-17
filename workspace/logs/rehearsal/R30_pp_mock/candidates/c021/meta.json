@@ -1,35 +1,34 @@
 {
  "id": "c021",
  "parent": "c011",
- "hypothesis": "The parent's density relaxation is a single global scalar, but the TNS cost is driven by *regional* density spikes in the hottest bins; instead of further loosening the global weight, cap the per-bin density weight growth (`density_weight_new`) more tightly in the late stage so hot regions cannot explode and displace critical cells, while leaving the global ramp untouched — this stabilizes TNS without weakening wirelength/timing pressure elsewhere.",
- "expected_effect": "WNS slightly better or neutral, TNS improved (fewer moderate violations from regional over-crowding), overflow unchanged or slightly lower, runtime unchanged.",
+ "hypothesis": "The best parent (c011/c018 lineage) already clamps momentum decay to 0.5 and caps per-net weight; the remaining TNS lever inside `update_net_weights` is the *degree threshold* used to ignore high-fanout nets — lowering the effective `ignore_net_degree` cap so that moderate-fanout nets (which carry many moderate violations) also receive timing weight, while still skipping true clock/reset high-fanout nets, should spread repair effort and reduce TNS broadly.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
  "phase": "structural",
- "created_at": 1794906326.4148672,
+ "created_at": 1794921684.495238,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.5924123436436548,
- "score_robust": 0.17827664458878612,
+ "score_total": 0.9466454839965923,
+ "score_robust": 0.2776963830515596,
  "per_case": {
-  "bp_fe-ng45": 0.21657594597511245,
-  "bp-ng45": 0.2046175051317404,
-  "ariane133-ng45": 0.1712188925368019
+  "bp_fe-ng45": 0.2735489367534307,
+  "bp-ng45": 0.30780455462340806,
+  "ariane133-ng45": 0.3652919926197535
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis holds: capping late-stage per-bin density weight growth improved TNS across all three cases (dTNS +20.7% to +31.0%) with WNS also improving, and no invalid runs. The mechanism is consistent with regional density spikes being contained, freeing critical cells from displacement—bp_fe-ng45 shows the largest TNS gain (+31.0%) despite modest WNS (+8.1%), suggesting reduced hot-bin congestion rather than global loosening. Next step: sweep the cap value (e.g., tighter vs. current) on bp_fe-ng45 and ariane133-ng45 to find the knee where TNS gains saturate before WNS or wirelength degrades.",
- "llm_cost_cny": 0.0047732,
- "eval_wall_s": 0.00011134147644042969,
+ "analysis": "Hypothesis held: all three cases improved, with dTNS gains (+28–45%) exceeding dWNS (+24–26%), consistent with spreading repair to moderate-fanout nets. bp-ng45 and ariane133-ng45 moved most; bp_fe-ng45 least, plausibly because its violation mix is dominated by true high-fanout nets still skipped. Overflow ~120–135 is stable, so no legality concern. Next step: sweep the effective `ignore_net_degree` cap (e.g., 200/150/100) to find where moderate-fanout weighting saturates before clock/reset nets leak in, and confirm TNS gains persist without overflow regression.",
+ "llm_cost_cny": 0.0055991999999999995,
+ "eval_wall_s": 0.0001289844512939453,
  "tags": [
-  "density_weight_new",
-  "update_density_weight_op_overflow",
-  "density_quad_coeff",
-  "stop_overflow",
-  "update_mask",
-  "density_weight_step_size"
+  "ignore_net_degree",
+  "update_net_weights",
+  "degree_map",
+  "net_criticality",
+  "max_net_weight"
  ],
  "max_overflow": null,
- "prompt_chars": 21264
+ "prompt_chars": 21226
 }

@@ -1,0 +1,98 @@
+{
+ "candidate_id": "c028",
+ "wall_s": 9.202957153320312e-05,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "HBT min-spacing violation"
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "stage timeout"
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "legalization overlap"
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "KeyError in partition"
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "KeyError in partition"
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "HBT min-spacing violation"
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "legalization overlap"
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "legalization overlap"
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": 0,
+   "tns": 0,
+   "overflow": 0.0,
+   "valid": false,
+   "fail_reason": "KeyError in partition"
+  }
+ },
+ "stage_logs": {
+  "bp_fe-ng45/1001": "[ERROR] HBT min-spacing violation\nTraceback (most recent call last): ...\n",
+  "bp_fe-ng45/1002": "[ERROR] stage timeout\nTraceback (most recent call last): ...\n",
+  "bp_fe-ng45/1003": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
+  "bp-ng45/1001": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n",
+  "bp-ng45/1002": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n",
+  "bp-ng45/1003": "[ERROR] HBT min-spacing violation\nTraceback (most recent call last): ...\n",
+  "ariane133-ng45/1001": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
+  "ariane133-ng45/1002": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
+  "ariane133-ng45/1003": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n"
+ }
+}

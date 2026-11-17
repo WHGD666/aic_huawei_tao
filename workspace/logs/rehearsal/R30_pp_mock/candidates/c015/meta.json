@@ -1,34 +1,33 @@
 {
  "id": "c015",
  "parent": "c013",
- "hypothesis": "The parent's density relaxation is gated only on *global* overflow, but the TNS cost comes from cells being pushed into *locally* congested bins; making the HPWL-driven density relaxation conditional on the *worst-region* density (not just aggregate overflow) — i.e. relax the density weight only when both total overflow is non-increasing AND the maximum per-bin density is not growing — keeps density pressure where it is actually needed without starving wirelength globally.",
- "expected_effect": "WNS slightly better or neutral, TNS better (fewer congestion-driven detours in hot regions), overflow flat-to-lower, runtime unchanged.",
+ "hypothesis": "Building on c013 (score +0.619, decay<=0.5, max_net_weight<=8), raise the finite weight cap modestly from 8 to 11.2 (x1.4) so that the most critical nets get slightly more pull without returning to the uncapped regime that hurt TNS spreading — a conservative refinement that should preserve the TNS gains while nudging WNS.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906288.388117,
+ "phase": "final",
+ "created_at": 1794921651.596256,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.27040603980973255,
- "score_robust": 0.05717126127665401,
+ "score_total": 0.40378071026685036,
+ "score_robust": 0.056683312734347735,
  "per_case": {
-  "bp_fe-ng45": 0.10833727293034025,
-  "bp-ng45": 0.1182024314193157,
-  "ariane133-ng45": 0.04386633546007659
+  "bp_fe-ng45": 0.19383640082500028,
+  "bp-ng45": 0.18542541790132894,
+  "ariane133-ng45": 0.024518891540521098
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis held: gating density relaxation on worst-region density improved all three cases (total +0.270, robust +0.057, all valid). Gains concentrate in TNS (bp-ng45 +11.4%, bp_fe-ng45 +13.7%) with WNS also up, consistent with the mechanism—retaining density pressure in locally congested bins stops cells being displaced into already-tight regions, reducing the TNS-driving pushes without globally starving wirelength. ariane133-ng45 moved least (+0.044), plausibly because its overflow (~117) is already high, leaving less headroom. Next step: sweep the worst-region density growth threshold (e.g., allow small positive growth vs. strict non-growth) to test sensitivity and confirm the effect isn't threshold-specific.",
- "llm_cost_cny": 0.0068538,
- "eval_wall_s": 0.00014591217041015625,
+ "analysis": "The hypothesis held: raising the cap 8→11.2 preserved TNS gains while improving WNS across all three cases (all valid, no failures). WNS rose +3.9% (ariane), +14.1% (bp), +22.3% (bp_fe); TNS also improved (+1.4%, +21.5%, +17.5%), so the conservative cap avoided the uncapped regime's TNS-spreading penalty. Mechanism: critical nets get slightly more pull, tightening WNS without over-constraining routing/overflow. Next step: sweep cap 9.6–12.8 to locate the WNS/TNS optimum before committing.",
+ "llm_cost_cny": 0.0049996,
+ "eval_wall_s": 0.00010013580322265625,
  "tags": [
-  "PlaceObj.update_density_weight",
-  "cur_metric.density",
-  "PlaceObj.initialize_density_weight",
-  "update_density_weight_op_overflow",
-  "NonLinearPlace.__call__"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "net_weighting_scheme",
+  "update_net_weights"
  ],
  "max_overflow": null,
- "prompt_chars": 21590
+ "prompt_chars": 21953
 }

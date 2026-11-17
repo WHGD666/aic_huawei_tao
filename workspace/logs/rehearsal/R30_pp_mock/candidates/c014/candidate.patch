@@ -1,40 +1,36 @@
 diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..ca10131 100755
 --- a/Place-LoL/dreamplace/PlaceObj.py
 +++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -846,7 +846,35 @@ class PlaceObj(nn.Module):
-                     mu = UPPER_PCOF * torch.pow(
-                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
-                             min=LOWER_PCOF, max=UPPER_PCOF)
-+                ### allow the density weight to relax more when HPWL degrades,
-+                ### so wirelength/timing is not starved by density pressure
-+                mu = mu.clamp(min=0.5 * LOWER_PCOF)
-+                ### temper early growth of density pressure: when HPWL is still
-+                ### noisy in the first iterations, growing the density weight
-+                ### fast pushes cells into congestion-driven detours that cost
-+                ### TNS later; damp mu toward 1 early, keep full band later.
-+                damp = min(1.0, float(iteration) / 50.0)
-+                mu = mu ** damp
-                 self.density_weight *= mu
-+                ### per-region rebalance: regions already above the stop-overflow
-+                ### threshold keep full pressure, relatively lighter regions get
-+                ### their weight scaled down toward the global minimum. This
-+                ### concentrates density pressure where it matters (reducing
-+                ### detours that inflate TNS) without loosening global balance.
-+                try:
-+                    if self.density_weight.numel() > 1:
-+                        dw = self.density_weight
-+                        dw_min = dw.min()
-+                        dw_max = dw.max()
-+                        if dw_max > dw_min:
-+                            # normalized position in [0,1]; heavier regions stay 1
-+                            rel = (dw - dw_min) / (dw_max - dw_min)
-+                            # light regions (rel near 0) scale toward 0.85,
-+                            # heavy regions (rel near 1) stay at 1.0
-+                            scale = 0.85 + 0.15 * rel
-+                            self.density_weight = dw * scale
-+                except Exception:
-+                    pass
+@@ -801,8 +801,8 @@ class PlaceObj(nn.Module):
  
-         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
-             assert self.quad_penalty == True, logging.error("density weight update based on overflow only works for quadratic density penalty")
+             self.density_weight_u *= params.density_weight * wirelength_grad_norm / density_grad_norm
+             ### set initial step size for density weight update
+-            self.density_weight_step_size_inc_low = 1.03
+-            self.density_weight_step_size_inc_high = 1.04
++            self.density_weight_step_size_inc_low = 1.015
++            self.density_weight_step_size_inc_high = 1.025
+             self.density_weight_step_size = (self.density_weight_step_size_inc_low - 1) * self.density_weight_u.norm(p=2)
+             ### commit initial density weight
+             self.density_weight = self.density_weight_u * density_weight_s
+@@ -860,14 +860,18 @@ class PlaceObj(nn.Module):
+                 self.density_weight_u += self.density_weight_step_size * density_weight_grad
+                 density_weight_s = 1 + self.density_quad_coeff * density_norm
+ 
+-                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
++                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=3.5)
+ 
+                 ### conditional update if this region's overflow is higher than stop overflow
++                ### use a slightly relaxed stop criterion so regions that are already
++                ### nearly overflow-free stop inflating their density penalty (less
++                ### over-spreading of already-legal regions -> shorter wires)
++                stop_ovf = self.params.stop_overflow * 1.1
+                 if(self.update_mask is None):
+-                    self.update_mask = cur_metric.overflow >= self.params.stop_overflow
++                    self.update_mask = cur_metric.overflow >= stop_ovf
+                 else:
+                     ### restart updating is not allowed
+-                    self.update_mask &= cur_metric.overflow >= self.params.stop_overflow
++                    self.update_mask &= cur_metric.overflow >= stop_ovf
+                 self.density_weight.masked_scatter_(self.update_mask, density_weight_new[self.update_mask])
+ 
+                 ### update density weight step size

@@ -1,54 +1,62 @@
 {
  "task": "partition_placement",
- "run_dir": "logs/R30",
+ "run_dir": "logs/R2",
  "budget": {
-  "evaluations": 28,
-  "cost_cny": 0.1898424,
+  "evaluations": 30,
+  "cost_cny": 0.17014980000000002,
   "usage": {
-   "prompt_tokens": 279020,
-   "completion_tokens": 28736,
-   "cache_hit_tokens": 162944,
+   "prompt_tokens": 209505,
+   "completion_tokens": 23004,
+   "cache_hit_tokens": 94848,
    "reasoning_tokens": 0
   },
-  "llm_calls": 76,
-  "started_at": 1794906182.7638102
+  "llm_calls": 66,
+  "started_at": 1794921579.1473167
  },
- "n_candidates": 37,
- "n_evaluated": 20,
- "n_gate_failed": 9,
- "n_invalid": 8,
+ "n_candidates": 31,
+ "n_evaluated": 24,
+ "n_gate_failed": 1,
+ "n_invalid": 6,
  "best": {
-  "id": "c024",
-  "parent": "c010",
-  "hypothesis": "The GNN contrastive loss uses a single global edge-weight tensor, but the *area-balance repair* then flips nodes by pure area delta, potentially undoing critical-pair co-location; by making the swap-gain prefer moving *non-critical* (low timing-weight) nodes and penalize breaking critical nets, we keep timing-critical logic co-located while still meeting area balance — reducing TNS without WNS regressions.",
-  "expected_effect": "WNS small improvement (~+2-5%), TNS improvement (~+5-15%), overflow unchanged, runtime unchanged.",
+  "id": "c021",
+  "parent": "c011",
+  "hypothesis": "The best parent (c011/c018 lineage) already clamps momentum decay to 0.5 and caps per-net weight; the remaining TNS lever inside `update_net_weights` is the *degree threshold* used to ignore high-fanout nets — lowering the effective `ignore_net_degree` cap so that moderate-fanout nets (which carry many moderate violations) also receive timing weight, while still skipping true clock/reset high-fanout nets, should spread repair effort and reduce TNS broadly.",
+  "expected_effect": "",
   "files_changed": [
-   "Place-MoL/src/partition/GNN/GNN_partition.py"
+   "Place-LoL/dreamplace/ops/timing/timing.py"
   ],
   "phase": "structural",
-  "created_at": 1794906349.6231596,
+  "created_at": 1794921684.495238,
   "status": "evaluated",
   "gate_report": "OK",
-  "score_total": 0.7151957903697289,
-  "score_robust": 0.21066438693423806,
+  "score_total": 0.9466454839965923,
+  "score_robust": 0.2776963830515596,
   "per_case": {
-   "bp_fe-ng45": 0.24041374835457288,
-   "bp-ng45": 0.20346855105613992,
-   "ariane133-ng45": 0.27131349095901613
+   "bp_fe-ng45": 0.2735489367534307,
+   "bp-ng45": 0.30780455462340806,
+   "ariane133-ng45": 0.3652919926197535
   },
   "all_valid": true,
   "fail_reasons": [],
-  "analysis": "Hypothesis held: all three cases improved, with dTNS gains (+27.5% to +36.0%) exceeding dWNS gains (+9.4% to +14.4%), consistent with the mechanism—preferring non-critical swaps preserves critical-pair co-location while area balance is still met. Overflow (~87–147) suggests some congestion cost worth monitoring. Next step: sweep the criticality penalty weight and log how many critical nets are broken per repair pass, to confirm the mechanism directly and find the TNS/overflow sweet spot.",
-  "llm_cost_cny": 0.005972,
-  "eval_wall_s": 0.0001628398895263672,
+  "analysis": "Hypothesis held: all three cases improved, with dTNS gains (+28–45%) exceeding dWNS (+24–26%), consistent with spreading repair to moderate-fanout nets. bp-ng45 and ariane133-ng45 moved most; bp_fe-ng45 least, plausibly because its violation mix is dominated by true high-fanout nets still skipped. Overflow ~120–135 is stable, so no legality concern. Next step: sweep the effective `ignore_net_degree` cap (e.g., 200/150/100) to find where moderate-fanout weighting saturates before clock/reset nets leak in, and confirm TNS gains persist without overflow regression.",
+  "llm_cost_cny": 0.0055991999999999995,
+  "eval_wall_s": 0.0001289844512939453,
   "tags": [
-   "_refine_partition_by_area",
-   "_edge_timing_weights",
-   "contrastive_loss",
-   "update_edge_weights",
-   "gnn_partition"
+   "ignore_net_degree",
+   "update_net_weights",
+   "degree_map",
+   "net_criticality",
+   "max_net_weight"
   ],
   "max_overflow": null,
-  "prompt_chars": 21275
+  "prompt_chars": 21226,
+  "expected": "TNS improves on all three cases (main effect), WNS roughly neutral to slightly better, overflow unchanged, runtime unchanged."
+ },
+ "code_version": {
+  "harness_git": "",
+  "baseline_whitelist_sha256": "43f9563dae8abc93",
+  "model": "deepseek-flash",
+  "evaluator_mode": "mock",
+  "whitelist_file": "config/whitelist_partition_placement.yaml"
  }
 }

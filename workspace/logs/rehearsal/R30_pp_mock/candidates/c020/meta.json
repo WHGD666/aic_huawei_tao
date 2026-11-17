@@ -1,36 +1,36 @@
 {
  "id": "c020",
- "parent": "c016",
- "hypothesis": "The parent's density-weight relaxations all act on the *global* density weight scalar, but the TNS cost comes from *localized* congestion where a few bins stay overfull long after the global overflow has settled; instead of touching the density weight, tighten the wirelength-model gamma schedule so that in the late stage (when overflow is already low) the HPWL model becomes more accurate (smaller gamma), which shortens critical nets without adding congestion — but clamp the gamma floor to avoid the \"cells pile up\" regime that hurt c014/c018.",
- "expected_effect": "TNS improves (more accurate wirelength late => shorter nets, fewer moderate violations), WNS neutral-to-slightly-positive, overflow roughly unchanged (gamma only refines, does not change density pressure), runtime unchanged.",
+ "parent": "c011",
+ "hypothesis": "Building on the validated best candidate c018 (decay<=0.5, max_net_weight cap 3.92), the only active knob is the cap; c019 confirmed tightening to ~2.74 still improved all cases, so make one conservative x0.7 step to ~2.74 (2.744) to confirm/extend the tight-cap trend with a safe, legal refinement.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906321.0984197,
- "status": "evaluated",
+ "phase": "final",
+ "created_at": 1794921671.5891843,
+ "status": "invalid",
  "gate_report": "OK",
- "score_total": 0.5155180096893732,
- "score_robust": 0.09526772724838903,
+ "score_total": null,
+ "score_robust": null,
  "per_case": {
-  "bp_fe-ng45": 0.06776144661877696,
-  "bp-ng45": 0.24977541744106832,
-  "ariane133-ng45": 0.19798114562952795
+  "bp_fe-ng45": 0.14806937864945138,
+  "bp-ng45": 0.09620008472161096,
+  "ariane133-ng45": 0.15964341351645853
  },
- "all_valid": true,
- "fail_reasons": [],
- "analysis": "The hypothesis held: all three cases improved, with no invalid runs. Gains concentrate in TNS (bp-ng45 +24.3%, ariane133 +23.7%) alongside WNS, consistent with a tighter late-stage gamma shortening critical nets without raising overflow (~110–136). bp_fe-ng45 moved least (+7.7% TNS), suggesting the gamma floor may be binding there or congestion already limits it. Next step: sweep the gamma floor per case (especially bp_fe-ng45) to confirm the clamp isn't leaving gains on the table while still avoiding the c014/c018 pile-up regime.",
- "llm_cost_cny": 0.0052049999999999996,
- "eval_wall_s": 0.000133514404296875,
+ "all_valid": false,
+ "fail_reasons": [
+  "bp-ng45/1003:stage timeout"
+ ],
+ "analysis": "Timeout failure: bp-ng45/1003 stage timeout, sporadic (single seed), so invalid and uninformative about the hypothesis. Valid cases show the tight-cap trend holding: ariane133 (+0.160, dWNS +11.6%, dTNS +18.7%), bp (+0.096, dWNS +24.1%), bp_fe (+0.148, dWNS +22.3%, dTNS +9.9%), consistent with reduced net-weight cap easing congestion/routing. Next: rerun bp-ng45/1003 with a longer stage timeout or reduced iteration count to confirm legality before extending the cap trend.",
+ "llm_cost_cny": 0.0048412,
+ "eval_wall_s": 0.00015211105346679688,
  "tags": [
-  "update_gamma",
-  "gamma",
-  "overflow_avg",
-  "base_gamma",
-  "density_weight",
-  "NonLinearPlace",
-  "PlaceObj.forward"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "net_weighting_scheme",
+  "update_net_weights",
+  "net_criticality"
  ],
  "max_overflow": null,
- "prompt_chars": 21887
+ "prompt_chars": 20653
 }

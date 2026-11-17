@@ -1,14 +1,12 @@
-diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..d6d6297 100755
---- a/Place-LoL/dreamplace/PlaceObj.py
-+++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -846,6 +846,9 @@ class PlaceObj(nn.Module):
-                     mu = UPPER_PCOF * torch.pow(
-                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
-                             min=LOWER_PCOF, max=UPPER_PCOF)
-+                ### allow the density weight to relax more when HPWL degrades,
-+                ### so wirelength/timing is not starved by density pressure
-+                mu = mu.clamp(min=0.5 * LOWER_PCOF)
-                 self.density_weight *= mu
- 
-         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+diff --git a/Place-MoL/src/partition/GNN/GNN_partition.py b/Place-MoL/src/partition/GNN/GNN_partition.py
+--- a/Place-MoL/src/partition/GNN/GNN_partition.py
++++ b/Place-MoL/src/partition/GNN/GNN_partition.py
+@@ -519,7 +519,7 @@ def gnn_partition(
+     graph_builder,
+     device='cpu',
+     n_clusters=2,
+-    area_balance_error=0.1
++    area_balance_error=0.10
+ ) -> Dict:
+     """
+     Perform GNN-based partition.

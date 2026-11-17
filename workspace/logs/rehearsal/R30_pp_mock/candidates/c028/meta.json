@@ -1,32 +1,37 @@
 {
  "id": "c028",
- "parent": "c010",
- "hypothesis": "The parent (c023/c027) already uses criticality-weighted contrastive loss and criticality-aware area repair; the remaining lever in the shown chunks is the *magnitude* of the per-edge timing weight in the positive-pair term — currently the raw `_edge_timing_weights` are used directly, so a modest x2 amplification (cap at 2x) of the critical-edge weight in `contrastive_loss` will strengthen critical-neighbor co-location without changing area balance, giving a small, robust TNS gain across all three circuits.",
- "expected_effect": "WNS ~same to slightly better (+0–5%), TNS better (+3–8%) on all cases, overflow unchanged, runtime unchanged.",
+ "parent": "c027",
+ "hypothesis": "c027's cap of 31.36 is the strongest robust parent; a modest x0.5 tightening to 15.68 (the c025 value) combined with keeping the decay<=0.5 and halved ignore-degree base reduces over-weighting of the few worst nets, spreading timing weight to more moderate nets and improving TNS robustness across all circuits.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
  "phase": "combine",
- "created_at": 1794906396.6631608,
- "status": "gate_failed",
- "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "created_at": 1794921713.9960175,
+ "status": "invalid",
+ "gate_report": "OK",
  "score_total": null,
  "score_robust": null,
  "per_case": {},
- "all_valid": null,
+ "all_valid": false,
  "fail_reasons": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+  "bp_fe-ng45/1001:HBT min-spacing violation",
+  "bp_fe-ng45/1002:stage timeout",
+  "bp_fe-ng45/1003:legalization overlap",
+  "bp-ng45/1001:KeyError in partition",
+  "bp-ng45/1002:KeyError in partition",
+  "bp-ng45/1003:HBT min-spacing violation"
  ],
- "analysis": "",
- "llm_cost_cny": 0.0057982,
- "eval_wall_s": 0.0,
+ "analysis": "Invalid: legality (HBT min-spacing, legalization overlap), crash (KeyError in partition), and timeout failures. Systematic across all seeds of bp_fe-ng45 and bp-ng45, so this candidate says nothing about the hypothesis. To make the idea legal: keep the x0.5 cap tightening but revert the halved ignore-degree base (likely driving the partition KeyError and spacing/overlap), then re-run; if failures persist, isolate cap change alone before combining with decay/ignore-degree edits.",
+ "llm_cost_cny": 0.004698399999999999,
+ "eval_wall_s": 9.202957153320312e-05,
  "tags": [
-  "contrastive_loss",
-  "_edge_timing_weights",
-  "update_edge_weights",
-  "_refine_partition_by_area",
-  "train_gnn_partition"
+  "update_net_weights",
+  "net_criticality",
+  "momentum_decay_factor",
+  "ignore_net_degree",
+  "max_net_weight"
  ],
  "max_overflow": null,
- "prompt_chars": 20971
+ "prompt_chars": 21093
 }

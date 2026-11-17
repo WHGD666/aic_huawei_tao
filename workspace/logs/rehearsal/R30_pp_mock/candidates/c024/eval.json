@@ -1,98 +1,98 @@
 {
  "candidate_id": "c024",
- "wall_s": 0.0001628398895263672,
+ "wall_s": 9.965896606445312e-05,
  "runs": {
   "bp_fe-ng45/1001": {
    "case": "bp_fe-ng45",
    "seed": 1001,
-   "wns": -0.35630511700593925,
-   "tns": -60.3740710155524,
-   "overflow": 172.7904208040144,
+   "wns": -0.2450061485679163,
+   "tns": -82.51088212385872,
+   "overflow": 82.52906302785004,
    "valid": true,
    "fail_reason": ""
   },
   "bp_fe-ng45/1002": {
    "case": "bp_fe-ng45",
    "seed": 1002,
-   "wns": -0.28663710295607836,
-   "tns": -107.04414546851139,
-   "overflow": 111.1611800306272,
+   "wns": -0.3110242669313693,
+   "tns": -68.41287129545059,
+   "overflow": 70.06131355569302,
    "valid": true,
    "fail_reason": ""
   },
   "bp_fe-ng45/1003": {
    "case": "bp_fe-ng45",
    "seed": 1003,
-   "wns": -0.30860582871771264,
-   "tns": -69.63043439612574,
-   "overflow": 113.03840892123881,
+   "wns": -0.3620201390112823,
+   "tns": -92.04600542995809,
+   "overflow": 230.2566181931849,
    "valid": true,
    "fail_reason": ""
   },
   "bp-ng45/1001": {
    "case": "bp-ng45",
    "seed": 1001,
-   "wns": -0.4784677109536742,
-   "tns": -353.62189648018307,
-   "overflow": 126.7177504952931,
+   "wns": -0.576982764381258,
+   "tns": -320.9331512735603,
+   "overflow": 137.0239308041748,
    "valid": true,
    "fail_reason": ""
   },
   "bp-ng45/1002": {
    "case": "bp-ng45",
    "seed": 1002,
-   "wns": -0.47060988624976374,
-   "tns": -365.4394058328932,
-   "overflow": 157.28272295698392,
+   "wns": -0.39577714881726744,
+   "tns": -312.6201741652022,
+   "overflow": 80.55007623438684,
    "valid": true,
    "fail_reason": ""
   },
   "bp-ng45/1003": {
    "case": "bp-ng45",
    "seed": 1003,
-   "wns": -0.5406312702214997,
-   "tns": -324.5117467812661,
-   "overflow": 157.36731119857484,
+   "wns": -0.3959580030819714,
+   "tns": -253.85218472089457,
+   "overflow": 127.06233437079104,
    "valid": true,
    "fail_reason": ""
   },
   "ariane133-ng45/1001": {
    "case": "ariane133-ng45",
    "seed": 1001,
-   "wns": -0.6333277369931042,
-   "tns": -516.9904570467078,
-   "overflow": 106.83463186722851,
+   "wns": -0.6719584037717491,
+   "tns": -763.4552512580694,
+   "overflow": 150.8622644578835,
    "valid": true,
    "fail_reason": ""
   },
   "ariane133-ng45/1002": {
    "case": "ariane133-ng45",
    "seed": 1002,
-   "wns": -0.834800816430765,
-   "tns": -666.8619251296835,
-   "overflow": 110.4936361144382,
+   "wns": -0.6098913001442561,
+   "tns": -611.1581427861305,
+   "overflow": 193.39847842638335,
    "valid": true,
    "fail_reason": ""
   },
   "ariane133-ng45/1003": {
    "case": "ariane133-ng45",
    "seed": 1003,
-   "wns": -0.5865601822759435,
-   "tns": -639.3770523109313,
-   "overflow": 44.822159379801235,
+   "wns": -0.6659397493535822,
+   "tns": -886.4997721467615,
+   "overflow": 141.12254924427037,
    "valid": true,
    "fail_reason": ""
   }
  },
  "stage_logs": {
-  "bp_fe-ng45/1001": "[INFO] wns=-0.356 tns=-60.4 overflow=173\n",
-  "bp_fe-ng45/1002": "[INFO] wns=-0.287 tns=-107.0 overflow=111\n",
-  "bp_fe-ng45/1003": "[INFO] wns=-0.309 tns=-69.6 overflow=113\n",
-  "bp-ng45/1001": "[INFO] wns=-0.478 tns=-353.6 overflow=127\n",
-  "bp-ng45/1002": "[INFO] wns=-0.471 tns=-365.4 overflow=157\n",
-  "bp-ng45/1003": "[INFO] wns=-0.541 tns=-324.5 overflow=157\n",
-  "ariane133-ng45/1001": "[INFO] wns=-0.633 tns=-517.0 overflow=107\n",
-  "ariane133-ng45/1002": "[INFO] wns=-0.835 tns=-666.9 overflow=110\n",
-  "ariane133-ng45/1003": "[INFO] wns=-0.587 tns=-639.4 overflow=45\n"
+  "bp_fe-ng45/1001": "[INFO] wns=-0.245 tns=-82.5 overflow=83\n",
+  "bp_fe-ng45/1002": "[INFO] wns=-0.311 tns=-68.4 overflow=70\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.362 tns=-92.0 overflow=230\n",
+  "bp-ng45/1001": "[INFO] wns=-0.577 tns=-320.9 overflow=137\n",
+  "bp-ng45/1002": "[INFO] wns=-0.396 tns=-312.6 overflow=81\n",
+  "bp-ng45/1003": "[INFO] wns=-0.396 tns=-253.9 overflow=127\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.672 tns=-763.5 overflow=151\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.610 tns=-611.2 overflow=193\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.666 tns=-886.5 overflow=141\n"
  }
 }

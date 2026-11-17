@@ -1,36 +1,34 @@
 {
  "id": "c025",
- "parent": "c021",
- "hypothesis": "The parent caps *how high* the per-bin density weight can grow (4x median) but leaves the masked_scatter update free to push hot-bin weights *downward* to 1e-12 whenever `density_weight_new` is small, and — more importantly — the cap is applied to every bin uniformly, so bins that are already at the cap get no relief while the global weight keeps climbing. Instead, make the per-bin cap adaptive to the *spread* of the current per-bin weights (cap at median + k*IQR-like spread), so hot bins in a congested region are throttled relative to their peers rather than by an absolute multiple of the median, which should reduce regional detours that inflate TNS.",
- "expected_effect": "TNS improves on all three (regional congestion relief → fewer moderate violations); WNS roughly neutral to slightly better; overflow unchanged or slightly lower; runtime unchanged.",
+ "parent": "c024",
+ "hypothesis": "c024 (decay<=0.5, ignore_net_degree halved, adam scheme, per-net weight cap 7.84) is the strongest robust candidate; the cap is the only active knob, and history shows a consistent monotone trend (3.92 -> 7.84 improved all cases), so a modest x2 relaxation of the cap to 15.68 should let the worst paths retain more weight without starving moderate nets, improving WNS/TNS broadly.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906359.2952871,
+ "phase": "combine",
+ "created_at": 1794921702.7558215,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.6500501720355257,
- "score_robust": 0.17165008974423132,
+ "score_total": 0.8942836754411776,
+ "score_robust": 0.25370677806175057,
  "per_case": {
-  "bp_fe-ng45": 0.2752093598597299,
-  "bp-ng45": 0.16567114200598435,
-  "ariane133-ng45": 0.20916967016981147
+  "bp_fe-ng45": 0.2950684314544559,
+  "bp-ng45": 0.3539081237604489,
+  "ariane133-ng45": 0.24530712022627288
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis held: all three cases improved, with robust score +0.172 and no invalid runs. Largest gain on bp_fe-ng45 (score +0.275, dWNS +32.1%, dTNS +24.1%), consistent with adaptive spread-based capping throttling hot bins relative to congested peers, reducing regional detours and TNS inflation. Overflow rose modestly (~96–126), suggesting a mild density/legality tradeoff worth monitoring. Next step: sweep the spread multiplier k (e.g., 1.0–2.0×IQR) across seeds to confirm the TNS gain persists without overflow regressions, and check whether the 1e-12 downward floor is still needed under adaptive capping.",
- "llm_cost_cny": 0.0050772,
- "eval_wall_s": 0.00010991096496582031,
+ "analysis": "The hypothesis held: relaxing the cap to 15.68 improved all three cases (robust +0.254, min +0.245, all valid). Gains are broadest on bp-ng45 (dWNS +31.8%, dTNS +38.1%) and bp_fe-ng45 (dTNS +36.1%), consistent with worst paths retaining more weight without starving moderate nets. Next step: probe cap=31.36 to test whether the monotone trend continues or saturates, and check overflow headroom (~109–133) before further relaxation.",
+ "llm_cost_cny": 0.0049194,
+ "eval_wall_s": 0.00012159347534179688,
  "tags": [
-  "build_update_density_weight",
-  "density_weight",
-  "update_mask",
-  "stop_overflow",
-  "density_weight_step_size",
-  "gamma",
-  "target_density"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "ignore_net_degree",
+  "net_weighting_scheme",
+  "update_net_weights"
  ],
  "max_overflow": null,
- "prompt_chars": 21399
+ "prompt_chars": 21416
 }

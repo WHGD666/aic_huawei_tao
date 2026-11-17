@@ -1,22 +1,11 @@
 diff --git a/Place-LoL/dreamplace/ops/timing/timing.py b/Place-LoL/dreamplace/ops/timing/timing.py
-index ae4cf0f..8360fa7 100755
 --- a/Place-LoL/dreamplace/ops/timing/timing.py
 +++ b/Place-LoL/dreamplace/ops/timing/timing.py
-@@ -185,12 +185,12 @@ class TimingOpt(nn.Module):
-         @param max_net_weight the maximum net weight in timing opt
-         @param n the maximum number of paths to be reported.
+@@ -187,6 +187,7 @@ class TimingOpt(nn.Module):
          """
-+        # Prefer the momentum-accumulating "lilith" update so that weight is
-+        # spread over moderately-critical nets (helps TNS) rather than being
-+        # driven only by the single worst path. Fall back to the configured
-+        # scheme only if it is explicitly something else.
          if self.net_weighting_scheme == "adams": scm = 0
--        elif self.net_weighting_scheme == "lilith": scm = 1
--        else:
--            logging.warning("unsupported net-weighting scheme %r" % \
--                (self.net_weighting_scheme))
--            scm = -1 # Unsupported scheme.
-+        else: scm = 1
-         return timing_cpp.update_net_weights(
-             self.timer.raw_timer, n,
-             self.net_name2id_map,
+         elif self.net_weighting_scheme == "lilith": scm = 1
++        elif self.net_weighting_scheme == "adam": scm = 0
+         else:
+             logging.warning("unsupported net-weighting scheme %r" % \
+                 (self.net_weighting_scheme))

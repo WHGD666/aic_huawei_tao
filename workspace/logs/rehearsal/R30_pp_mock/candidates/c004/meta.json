@@ -1,35 +1,34 @@
 {
  "id": "c004",
  "parent": null,
- "hypothesis": "The graph-cut partitioner's area-balance test uses a single global tolerance `area_balance_error` applied to `total_area`; tightening it from 10% to 5% forces the initial greedy and swap-based partitions to keep the two dies closer to equal area, reducing extreme die imbalance that causes long cross-tier detours and legalization displacement — a cheap, attributable probe of P-P4.",
- "expected_effect": "WNS roughly unchanged or slightly better; TNS modestly better (fewer long cross-tier nets needing repair); overflow unchanged (<=300); runtime ~same.",
+ "hypothesis": "The area-balance tolerance of the partitioner (area_balance_error=0.1) is quite tight, forcing the partitioner to move non-critical macros to satisfy balance; loosening it to 0.15 lets the cut objective keep timing-relevant macros on their preferred tier, reducing cross-tier detours and TNS.",
+ "expected_effect": "",
  "files_changed": [
   "Place-MoL/src/partition/GNN/GNN_partition.py"
  ],
  "phase": "probe",
- "created_at": 1794906202.6749825,
+ "created_at": 1794921604.2617137,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": -0.04889295949661577,
- "score_robust": -0.020024341496307385,
+ "score_total": -0.07749016259673046,
+ "score_robust": -0.07680293714354516,
  "per_case": {
-  "bp_fe-ng45": -0.018459261520897993,
-  "bp-ng45": -0.019379527916212932,
-  "ariane133-ng45": -0.011054170059504839
+  "bp_fe-ng45": -0.09489810287186952,
+  "bp-ng45": 0.026580090603528617,
+  "ariane133-ng45": -0.009172150328389554
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis did not hold: tightening area balance from 10% to 5% gave total −0.049 (robust −0.020), with all three cases slightly negative. Ariane133-ng45 improved WNS (+6.8%) but lost TNS (−6.6%); bp-ng45 and bp_fe-ng45 show mixed WNS/TNS with no clear imbalance-driven gain, suggesting the tighter tolerance added partitioning/legalization cost without reducing cross-tier detours. Next step: sweep tolerance (e.g., 10/7.5/5%) and log per-die area skew versus cross-tier wirelength and displacement to test the proposed mechanism directly rather than inferring it from WNS/TNS.",
- "llm_cost_cny": 0.0033488000000000003,
- "eval_wall_s": 0.00014925003051757812,
+ "analysis": "Hypothesis not supported: total score −0.077, all cases valid, but only bp-ng45 improved (+0.027, dTNS +7.2%). ariane133-ng45 was slightly negative (−0.009) despite dWNS +5.0% and dTNS −4.4%, and bp_fe-ng45 regressed sharply (−0.095, dWNS −14.1%), suggesting looser balance let timing-critical macros drift to worse tiers there. Mechanism is case-dependent, not general. Next step: sweep area_balance_error (0.10–0.15) per design, or apply 0.15 only where tier capacity is asymmetric, and re-check bp_fe-ng45 macro-tier assignments.",
+ "llm_cost_cny": 0.0035166,
+ "eval_wall_s": 9.298324584960938e-05,
  "tags": [
-  "GraphCutPartitioner.__init__",
   "area_balance_error",
-  "_is_area_balanced",
-  "_initialize_area_balanced_partition",
   "gnn_partition",
-  "partition_with_kmeans"
+  "partition_with_kmeans",
+  "_is_area_balanced",
+  "_initialize_area_balanced_partition"
  ],
  "max_overflow": null,
- "prompt_chars": 18364
+ "prompt_chars": 18605
 }

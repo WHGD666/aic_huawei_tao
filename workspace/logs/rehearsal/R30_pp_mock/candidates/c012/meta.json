@@ -1,35 +1,37 @@
 {
  "id": "c012",
  "parent": "c011",
- "hypothesis": "The parent's density-weight \"damp toward 1 early\" is a blunt instrument — it uniformly weakens the density gradient in the first 50 iterations regardless of whether overflow is actually rising. Instead, I gate the relaxation on *observed* overflow: only let the density weight relax (clamp to 0.5*LOWER_PCOF) when the current overflow is not above the previous one, so that when cells are being pushed into congested regions (overflow rising) the density pressure is allowed to grow normally and clear the congestion, while in the steady/freeing regime it keeps the wirelength-friendly relaxation. This preserves the parent's TNS gains but reduces the congestion-driven detours that later cost TNS.",
- "expected_effect": "TNS improves modestly (+2–6%) on bp/bp_fe, roughly neutral on ariane133; WNS neutral to slightly better; overflow stays at or below the parent's ~80–108 level; runtime unchanged.",
+ "hypothesis": "Building on c011 (timing-driven weighting + decay<=0.5), lower the momentum decay further to 0.25 so criticality tracks the evolving placement even more tightly and spreads weight across many moderately-critical nets (TNS-friendly), without starving the single worst path (WNS).",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
  "phase": "structural",
- "created_at": 1794906254.8930244,
- "status": "evaluated",
+ "created_at": 1794921639.5453143,
+ "status": "invalid",
  "gate_report": "OK",
- "score_total": 0.5879938292007475,
- "score_robust": 0.17031129422285785,
- "per_case": {
-  "bp_fe-ng45": 0.1596733914664736,
-  "bp-ng45": 0.21384224634155466,
-  "ariane133-ng45": 0.21447819139271926
- },
- "all_valid": true,
- "fail_reasons": [],
- "analysis": "The hypothesis held: gating density relaxation on observed overflow improved all three cases (score +0.160 to +0.214, all valid). Gains concentrate in TNS (up to +28.1%) with WNS also positive, consistent with reduced congestion-driven detours. Ariane133 and bp show the largest TNS moves; bp_fe smaller but still positive. Mechanism: allowing density pressure to grow when overflow rises clears congestion earlier, preserving wirelength-friendly relaxation otherwise. Next step: sweep the relaxation factor (0.5×LOWER_PCOF) and the overflow comparison window to test robustness and find the best trade-off.",
- "llm_cost_cny": 0.0051811999999999995,
- "eval_wall_s": 0.00013494491577148438,
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:legalization overlap",
+  "bp_fe-ng45/1002:stage timeout",
+  "bp_fe-ng45/1003:stage timeout",
+  "bp-ng45/1001:KeyError in partition",
+  "bp-ng45/1002:KeyError in partition",
+  "bp-ng45/1003:legalization overlap"
+ ],
+ "analysis": "Invalid: mixed legality (legalization overlap), crash (KeyError in partition), and timeout failures. Systematic across all seeds for bp_fe-ng45 (timeouts/overlap) and bp-ng45 (KeyError/overlap), so the candidate says nothing about the hypothesis. Likely the tighter decay destabilizes partitioning/legalization. To make the idea legal: gate decay=0.25 behind a feasibility check, add partition-key fallback, and cap runtime; re-run on a single seed first to isolate whether overlap stems from weighting or partition crash.",
+ "llm_cost_cny": 0.0045002,
+ "eval_wall_s": 6.437301635742188e-05,
  "tags": [
-  "PlaceObj.build_update_density_weight",
-  "update_density_weight_op_hpwl",
-  "cur_metric.overflow",
-  "LOWER_PCOF",
-  "UPPER_PCOF",
-  "density_weight"
+  "momentum_decay_factor",
+  "net_weighting_scheme",
+  "max_net_weight",
+  "net_criticality",
+  "update_net_weights"
  ],
  "max_overflow": null,
- "prompt_chars": 20512
+ "prompt_chars": 20769
 }

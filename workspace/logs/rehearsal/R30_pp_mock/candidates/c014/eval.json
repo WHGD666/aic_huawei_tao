@@ -1,98 +1,98 @@
 {
  "candidate_id": "c014",
- "wall_s": 9.250640869140625e-05,
+ "wall_s": 0.00010418891906738281,
  "runs": {
   "bp_fe-ng45/1001": {
    "case": "bp_fe-ng45",
    "seed": 1001,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "stage timeout"
+   "wns": -0.3818869495405675,
+   "tns": -123.73598603959267,
+   "overflow": 178.07464363997326,
+   "valid": true,
+   "fail_reason": ""
   },
   "bp_fe-ng45/1002": {
    "case": "bp_fe-ng45",
    "seed": 1002,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "legalization overlap"
+   "wns": -0.4015884755668705,
+   "tns": -71.4449041087043,
+   "overflow": 28.381144281722015,
+   "valid": true,
+   "fail_reason": ""
   },
   "bp_fe-ng45/1003": {
    "case": "bp_fe-ng45",
    "seed": 1003,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "KeyError in partition"
+   "wns": -0.2876807585588539,
+   "tns": -132.71033873101965,
+   "overflow": 143.5927268461214,
+   "valid": true,
+   "fail_reason": ""
   },
   "bp-ng45/1001": {
    "case": "bp-ng45",
    "seed": 1001,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "legalization overlap"
+   "wns": -0.5167118450843101,
+   "tns": -499.0642516474549,
+   "overflow": 108.75894762045323,
+   "valid": true,
+   "fail_reason": ""
   },
   "bp-ng45/1002": {
    "case": "bp-ng45",
    "seed": 1002,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "HBT min-spacing violation"
+   "wns": -0.5443680952709596,
+   "tns": -446.29662190177027,
+   "overflow": 117.41118962344922,
+   "valid": true,
+   "fail_reason": ""
   },
   "bp-ng45/1003": {
    "case": "bp-ng45",
    "seed": 1003,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "legalization overlap"
+   "wns": -0.5971567803456899,
+   "tns": -424.06679195976216,
+   "overflow": 181.60107937450135,
+   "valid": true,
+   "fail_reason": ""
   },
   "ariane133-ng45/1001": {
    "case": "ariane133-ng45",
    "seed": 1001,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "HBT min-spacing violation"
+   "wns": -0.7653337046342742,
+   "tns": -726.2540328949171,
+   "overflow": 98.31111389695857,
+   "valid": true,
+   "fail_reason": ""
   },
   "ariane133-ng45/1002": {
    "case": "ariane133-ng45",
    "seed": 1002,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "HBT min-spacing violation"
+   "wns": -0.6766024861913891,
+   "tns": -1087.4443130414295,
+   "overflow": 53.97601471537652,
+   "valid": true,
+   "fail_reason": ""
   },
   "ariane133-ng45/1003": {
    "case": "ariane133-ng45",
    "seed": 1003,
-   "wns": 0,
-   "tns": 0,
-   "overflow": 0.0,
-   "valid": false,
-   "fail_reason": "KeyError in partition"
+   "wns": -0.7996735656739652,
+   "tns": -858.0934981890931,
+   "overflow": 55.956769369245166,
+   "valid": true,
+   "fail_reason": ""
   }
  },
  "stage_logs": {
-  "bp_fe-ng45/1001": "[ERROR] stage timeout\nTraceback (most recent call last): ...\n",
-  "bp_fe-ng45/1002": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
-  "bp_fe-ng45/1003": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n",
-  "bp-ng45/1001": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
-  "bp-ng45/1002": "[ERROR] HBT min-spacing violation\nTraceback (most recent call last): ...\n",
-  "bp-ng45/1003": "[ERROR] legalization overlap\nTraceback (most recent call last): ...\n",
-  "ariane133-ng45/1001": "[ERROR] HBT min-spacing violation\nTraceback (most recent call last): ...\n",
-  "ariane133-ng45/1002": "[ERROR] HBT min-spacing violation\nTraceback (most recent call last): ...\n",
-  "ariane133-ng45/1003": "[ERROR] KeyError in partition\nTraceback (most recent call last): ...\n"
+  "bp_fe-ng45/1001": "[INFO] wns=-0.382 tns=-123.7 overflow=178\n",
+  "bp_fe-ng45/1002": "[INFO] wns=-0.402 tns=-71.4 overflow=28\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.288 tns=-132.7 overflow=144\n",
+  "bp-ng45/1001": "[INFO] wns=-0.517 tns=-499.1 overflow=109\n",
+  "bp-ng45/1002": "[INFO] wns=-0.544 tns=-446.3 overflow=117\n",
+  "bp-ng45/1003": "[INFO] wns=-0.597 tns=-424.1 overflow=182\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.765 tns=-726.3 overflow=98\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.677 tns=-1087.4 overflow=54\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.800 tns=-858.1 overflow=56\n"
  }
 }

@@ -1,12 +1,12 @@
 {
-  "evaluations": 28,
-  "cost_cny": 0.1898424,
+  "evaluations": 30,
+  "cost_cny": 0.17014980000000002,
   "usage": {
-    "prompt_tokens": 279020,
-    "completion_tokens": 28736,
-    "cache_hit_tokens": 162944,
+    "prompt_tokens": 209505,
+    "completion_tokens": 23004,
+    "cache_hit_tokens": 94848,
     "reasoning_tokens": 0
   },
-  "llm_calls": 76,
-  "started_at": 1794906182.7638102
+  "llm_calls": 66,
+  "started_at": 1794921579.1473167
 }

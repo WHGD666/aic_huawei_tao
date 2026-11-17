@@ -1,38 +1,36 @@
 {
  "id": "c005",
  "parent": null,
- "hypothesis": "The gamma schedule in `update_gamma` is extremely aggressive (coef = 10^((overflow-0.1)*20/9-1)); at overflow≈0.1 it gives coef≈0.1 which shrinks gamma and makes the WA wirelength model *more* convex/close to HPWL late in optimization, but at the start (overflow high) gamma blows up to huge values so the wirelength gradient is nearly flat and cells barely move on wirelength — this weak early wirelength signal leaves critical nets long. Clamping the coefficient to a modest band [0.5, 2.0] gives a steadier, non-degenerate gamma trajectory so the placer actually optimizes wirelength throughout, shortening critical paths and reducing TNS.",
- "expected_effect": "WNS slightly better/same, TNS modestly better on all three; overflow unchanged (~120); runtime unchanged.",
+ "hypothesis": "The wirelength model's gamma schedule is the single strongest lever on how tightly cells cluster (small gamma = HPWL-like, strong pull; large gamma = diffuse). Making the overflow→gamma coefficient less aggressive at low overflow keeps the model closer to HPWL early (denser, shorter critical nets) and only diffuses when congestion is really high, which should shorten many moderate paths and reduce TNS on all circuits.",
+ "expected_effect": "",
  "files_changed": [
   "Place-LoL/dreamplace/PlaceObj.py"
  ],
  "phase": "probe",
- "created_at": 1794906211.9231684,
- "status": "invalid",
+ "created_at": 1794921607.833676,
+ "status": "evaluated",
  "gate_report": "OK",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": false,
- "fail_reasons": [
-  "bp_fe-ng45/1001:HBT min-spacing violation",
-  "bp_fe-ng45/1002:HBT min-spacing violation",
-  "bp_fe-ng45/1003:KeyError in partition",
-  "bp-ng45/1001:KeyError in partition",
-  "bp-ng45/1002:KeyError in partition",
-  "bp-ng45/1003:legalization overlap"
- ],
- "analysis": "Invalid: legality failures (min-spacing violations, legalization overlap) plus crashes (KeyError in partition). Systematic across all seeds of bp_fe-ng45 and bp-ng45 cases, so the candidate says nothing about the hypothesis. Likely the clamped gamma band interacts badly with the partition/legalization stages. To make the idea legal: keep the [0.5, 2.0] clamp but re-tune the partition and legalization spacing margins, or apply the clamp only during global placement and restore the original schedule before detailed placement/legalization.",
- "llm_cost_cny": 0.0034964,
- "eval_wall_s": 8.606910705566406e-05,
+ "score_total": -0.030179166785922786,
+ "score_robust": -0.07365159523999673,
+ "per_case": {
+  "bp_fe-ng45": 0.07955471923179896,
+  "bp-ng45": -0.04832260422646745,
+  "ariane133-ng45": -0.0614112817912543
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "Hypothesis partly failed: total score −0.030, robust −0.074, with 2 of 3 cases worse. Ariane133-ng45 (dTNS −9.2%) and bp-ng45 (dWNS −7.0%) regressed, while bp_fe-ng45 improved (+13.8% WNS, +4.3% TNS). Mechanism: keeping gamma HPWL-like early densifies cells, but at overflow ~111–139 this likely over-congests moderate paths, hurting TNS; only the higher-overflow case (165) benefited from delayed diffusion. Next step: make the overflow→gamma coefficient overflow-adaptive with a threshold near 150, so densification persists only below it, and re-test across seeds.",
+ "llm_cost_cny": 0.0035564,
+ "eval_wall_s": 0.00010371208190917969,
  "tags": [
-  "update_gamma",
+  "PlaceObj.update_gamma",
   "base_gamma",
   "gamma",
-  "timing_opt_flag",
-  "net_weighting_scheme",
-  "max_net_weight"
+  "target_density",
+  "density_weight",
+  "TimingOpt.update_net_weights",
+  "net_weighting_scheme"
  ],
  "max_overflow": null,
- "prompt_chars": 18182
+ "prompt_chars": 18423
 }

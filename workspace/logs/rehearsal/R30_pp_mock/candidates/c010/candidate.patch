@@ -1,42 +1,36 @@
-diff --git a/Place-MoL/src/partition/GNN/GNN_partition.py b/Place-MoL/src/partition/GNN/GNN_partition.py
-index 6b6cc31..1be9cf6 100755
---- a/Place-MoL/src/partition/GNN/GNN_partition.py
-+++ b/Place-MoL/src/partition/GNN/GNN_partition.py
-@@ -123,6 +123,9 @@ class GNNPartitioner(nn.Module):
-         total_loss = 0.0
-         valid_nodes = 0
-         
-+        # Optional per-edge timing weights (shape [n_nodes, n_nodes]); when
-+        # present, critical edges count more in the positive-pair term.
-+        edge_w = getattr(self, '_edge_timing_weights', None)
-         for v in range(n_nodes):
-             # Get neighbors N(v)
-             neighbors = torch.where(adj[v])[0]  # Indices of neighbors
-@@ -142,7 +145,17 @@ class GNNPartitioner(nn.Module):
-             pos_tanh = torch.tanh(pos_dot_products)  # [|N(v)|]
-             # Clamp to ensure positive values for log (tanh range is [-1, 1], we need [epsilon, 1])
-             pos_tanh = torch.clamp(pos_tanh, min=1e-8, max=1.0 - 1e-8)
--            pos_term = torch.log(pos_tanh).sum()
-+            # Timing-aware: weight each positive pair by the edge's timing
-+            # criticality (if available) so critical neighbors are pulled
-+            # together more strongly -> they end up on the same tier.
-+            pos_log = torch.log(pos_tanh)
-+            if edge_w is not None:
-+                try:
-+                    pos_w = edge_w[v, neighbors].to(pos_log.device)
-+                    pos_log = pos_log * pos_w
-+                except Exception:
-+                    pass
-+            pos_term = pos_log.sum()
-             
-             # Second term: sum_{n in Neg(v)} log(tanh(-y_v^T y_n))
-             # For negative samples, we want y_v^T y_n to be small, so -y_v^T y_n is positive
-@@ -195,7 +208,7 @@ class GNNPartitioner(nn.Module):
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -801,8 +801,8 @@ class PlaceObj(nn.Module):
  
- def train_gnn_partition(
-     graph_builder,
--    num_epochs=100,
-+    num_epochs=40,
-     lr=0.001,
-     device='cpu',
-     hidden_dim=128,
+             self.density_weight_u *= params.density_weight * wirelength_grad_norm / density_grad_norm
+             ### set initial step size for density weight update
+-            self.density_weight_step_size_inc_low = 1.03
+-            self.density_weight_step_size_inc_high = 1.04
++            self.density_weight_step_size_inc_low = 1.02
++            self.density_weight_step_size_inc_high = 1.03
+             self.density_weight_step_size = (self.density_weight_step_size_inc_low - 1) * self.density_weight_u.norm(p=2)
+             ### commit initial density weight
+             self.density_weight = self.density_weight_u * density_weight_s
+@@ -860,14 +860,18 @@ class PlaceObj(nn.Module):
+                 self.density_weight_u += self.density_weight_step_size * density_weight_grad
+                 density_weight_s = 1 + self.density_quad_coeff * density_norm
+ 
+-                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
++                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=5)
+ 
+                 ### conditional update if this region's overflow is higher than stop overflow
++                ### use a slightly relaxed stop criterion so regions that are already
++                ### nearly overflow-free stop inflating their density penalty (less
++                ### over-spreading of already-legal regions -> shorter wires)
++                stop_ovf = self.params.stop_overflow * 1.1
+                 if(self.update_mask is None):
+-                    self.update_mask = cur_metric.overflow >= self.params.stop_overflow
++                    self.update_mask = cur_metric.overflow >= stop_ovf
+                 else:
+                     ### restart updating is not allowed
+-                    self.update_mask &= cur_metric.overflow >= self.params.stop_overflow
++                    self.update_mask &= cur_metric.overflow >= stop_ovf
+                 self.density_weight.masked_scatter_(self.update_mask, density_weight_new[self.update_mask])
+ 
+                 ### update density weight step size

@@ -1,40 +1,35 @@
 {
  "id": "c003",
  "parent": null,
- "hypothesis": "The density-weight update rule (hpwl-based) uses a fixed multiplicative band [LOWER_PCOF, UPPER_PCOF] around a fixed reference HPWL; tightening the upper growth cap and making the growth factor more conservative when HPWL stops improving will keep density weight from overshooting, yielding more uniform cell spreading and thus more room for the fixed timing-repair pass to insert buffers on critical bottom-tier nets, reducing TNS.",
- "expected_effect": "Slightly lower peak density weight, better uniformity/density distribution -> more buffering room; WNS ~neutral to slightly better, TNS modest improvement (a few %), overflow unchanged, runtime unchanged.",
+ "hypothesis": "Lowering the density-weight growth aggressiveness in the overflow-based update (clamping `density_weight_new` to a smaller max and slowing the step-size growth) keeps the analytical placement in a less-congested regime with more whitespace around critical logic, so the single fixed timing-repair pass can insert buffers and shorten detours, reducing TNS across all circuits.",
+ "expected_effect": "",
  "files_changed": [
   "Place-LoL/dreamplace/PlaceObj.py"
  ],
  "phase": "probe",
- "created_at": 1794906197.6483397,
- "status": "invalid",
+ "created_at": 1794921597.8340783,
+ "status": "evaluated",
  "gate_report": "OK",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": false,
- "fail_reasons": [
-  "bp_fe-ng45/1001:stage timeout",
-  "bp_fe-ng45/1002:KeyError in partition",
-  "bp_fe-ng45/1003:stage timeout",
-  "bp-ng45/1001:stage timeout",
-  "bp-ng45/1002:HBT min-spacing violation",
-  "bp-ng45/1003:stage timeout"
- ],
- "analysis": "Invalid: mixed timeout (4 runs, including all seeds of bp_fe-ng45/1001 and bp-ng45/1003), one crash (KeyError in partition, bp_fe-ng45/1002), and one legality failure (HBT min-spacing, bp-ng45/1002). Timeouts look systematic per-case; crash/legality sporadic. So the candidate says nothing about the hypothesis. To make it legal: profile and cap the density-weight loop's runtime, guard the partition KeyError, and add a spacing-repair/legality check after weight updates before timing repair.",
- "llm_cost_cny": 0.0036148,
- "eval_wall_s": 7.224082946777344e-05,
+ "score_total": 0.18824451861163227,
+ "score_robust": -0.006690204317448878,
+ "per_case": {
+  "bp_fe-ng45": -0.027973998678541015,
+  "bp-ng45": 0.14066149408010328,
+  "ariane133-ng45": 0.07555702321007002
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis only partly holds. Two of three cases improved (ariane133-ng45: dTNS +9.5%, dWNS +4.6%; bp-ng45: dTNS +22.2%), consistent with more whitespace easing buffer insertion. But bp_fe-ng45 regressed (dTNS -3.8%, dWNS -1.4%), and the robust mean-std is slightly negative (-0.007), so the gain isn't uniform. Next step: sweep the density-weight cap per circuit family, or make the growth rate adaptive to overflow magnitude, to avoid the bp_fe regression while retaining the ariane/bp gains.",
+ "llm_cost_cny": 0.006441399999999999,
+ "eval_wall_s": 9.72747802734375e-05,
  "tags": [
-  "PlaceObj.build_update_density_weight",
-  "UPPER_PCOF",
-  "LOWER_PCOF",
   "density_weight",
+  "update_density_weight_op_overflow",
   "stop_overflow",
-  "PlaceObj.initialize_density_weight",
-  "TimingOpt.update_net_weights",
-  "net_weighting_scheme"
+  "density_quad_coeff",
+  "target_density",
+  "timing_opt_flag"
  ],
  "max_overflow": null,
- "prompt_chars": 17768
+ "prompt_chars": 18048
 }

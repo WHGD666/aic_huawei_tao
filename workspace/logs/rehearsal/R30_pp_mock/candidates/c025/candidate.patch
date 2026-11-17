@@ -1,38 +1,50 @@
-diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..d06e58b 100755
---- a/Place-LoL/dreamplace/PlaceObj.py
-+++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -846,6 +846,15 @@ class PlaceObj(nn.Module):
-                     mu = UPPER_PCOF * torch.pow(
-                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
-                             min=LOWER_PCOF, max=UPPER_PCOF)
-+                ### allow the density weight to relax more when HPWL degrades,
-+                ### so wirelength/timing is not starved by density pressure
-+                mu = mu.clamp(min=0.5 * LOWER_PCOF)
-+                ### temper early growth of density pressure: when HPWL is still
-+                ### noisy in the first iterations, growing the density weight
-+                ### fast pushes cells into congestion-driven detours that cost
-+                ### TNS later; damp mu toward 1 early, keep full band later.
-+                damp = min(1.0, float(iteration) / 50.0)
-+                mu = mu ** damp
-                 self.density_weight *= mu
+diff --git a/Place-LoL/dreamplace/ops/timing/timing.py b/Place-LoL/dreamplace/ops/timing/timing.py
+--- a/Place-LoL/dreamplace/ops/timing/timing.py
++++ b/Place-LoL/dreamplace/ops/timing/timing.py
+@@ -187,10 +187,33 @@ class TimingOpt(nn.Module):
+         """
+         if self.net_weighting_scheme == "adams": scm = 0
+         elif self.net_weighting_scheme == "lilith": scm = 1
++        elif self.net_weighting_scheme == "adam": scm = 0
+         else:
+             logging.warning("unsupported net-weighting scheme %r" % \
+                 (self.net_weighting_scheme))
+             scm = -1 # Unsupported scheme.
++        # Keep the criticality signal responsive to the current placement so that
++        # many moderately-critical nets retain weight (helps TNS) instead of a few
++        # early-identified critical nets dominating the momentum accumulation.
++        decay = min(self.momentum_decay_factor, 0.5)
++        # Tighten the high-fanout ignore threshold so that moderate-fanout nets,
++        # which collectively carry many moderate violations, also receive timing
++        # weight. True clock/reset nets have very high degree and are still
++        # skipped. Clamp to a sane lower bound to avoid weighting everything.
++        if self.ignore_net_degree is not None and self.ignore_net_degree > 0:
++            eff_ignore_degree = max(16, int(self.ignore_net_degree * 0.5))
++        else:
++            eff_ignore_degree = self.ignore_net_degree
++        # Modest cap on per-net weight so that many moderately-critical nets
++        # retain weight (TNS) instead of a few early-critical nets dominating.
++        # Only tighten an existing finite cap; keep infinity if caller wants it.
++        # Combined with the halved ignore_net_degree above (which spreads weight
++        # to moderate-fanout nets for TNS), allow the strongest critical nets a
++        # modestly higher ceiling so the worst paths are not starved of weight.
++        if max_net_weight is None or max_net_weight == np.inf or max_net_weight < 0:
++            eff_max_net_weight = 15.68
++        else:
++            eff_max_net_weight = min(max_net_weight, 15.68)
+         return timing_cpp.update_net_weights(
+             self.timer.raw_timer, n,
+             self.net_name2id_map,
+@@ -200,9 +223,9 @@ class TimingOpt(nn.Module):
+             torch.from_numpy(self.net_weight_deltas),
+             torch.from_numpy(self.degree_map),
+             scm, # Pass integers instead of strings.
+-            self.momentum_decay_factor,
+-            max_net_weight, # -1 indicates infinity upper bound
+-            self.ignore_net_degree
++            decay,
++            eff_max_net_weight, # -1 indicates infinity upper bound
++            eff_ignore_degree
+             )
  
-         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
-@@ -860,7 +869,16 @@ class PlaceObj(nn.Module):
-                 self.density_weight_u += self.density_weight_step_size * density_weight_grad
-                 density_weight_s = 1 + self.density_quad_coeff * density_norm
- 
--                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
-+                ### cap per-bin density pressure: hot bins must not be allowed to
-+                ### grow unbounded and shove critical cells into detours. Use the
-+                ### *spread* of the current per-bin weights (median + spread) so
-+                ### the cap adapts to how uneven regional pressure already is,
-+                ### instead of a fixed multiple of the median.
-+                gw = self.density_weight.detach()
-+                gw_med = gw.median()
-+                gw_spread = (gw - gw_med).abs().median()
-+                per_bin_cap = (gw_med + 2.0 * gw_spread).clamp(min=1e-12)
-+                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=per_bin_cap)
- 
-                 ### conditional update if this region's overflow is higher than stop overflow
-                 if(self.update_mask is None):
+     def evaluate_slack(self):

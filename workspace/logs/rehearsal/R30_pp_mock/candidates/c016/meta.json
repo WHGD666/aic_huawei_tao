@@ -1,35 +1,33 @@
 {
  "id": "c016",
  "parent": "c013",
- "hypothesis": "The parent's density relaxation is gated only on global overflow and worst-region density, but the TNS/WNS cost comes from *timing-critical* cells being pushed into dense regions; make the early quadratic ramp of the density weight start later (longer window) and additionally keep a slightly higher floor on `mu` when HPWL is improving, so the placer spends more iterations in the wirelength-friendly regime where critical nets stay short, reducing TNS.",
- "expected_effect": "TNS improves (positive), WNS slightly improves, overflow unchanged or slightly lower, runtime unchanged.",
+ "hypothesis": "The best candidate (c013) clamps the per-net weight cap at 8.0; c015 already tested relaxing it to 11.2, so instead I make the conservative opposite refinement — tighten the cap modestly (x0.7 → 5.6) to further spread weight across many moderately-critical nets, which is the mechanism that drove c013's TNS-heavy gains (60% of the score).",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906293.1195095,
+ "phase": "final",
+ "created_at": 1794921654.9033208,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.5086841844212681,
- "score_robust": 0.14921982199042144,
+ "score_total": 0.411515763704154,
+ "score_robust": 0.10492598812360407,
  "per_case": {
-  "bp_fe-ng45": 0.1815610907663252,
-  "bp-ng45": 0.1862038711261853,
-  "ariane133-ng45": 0.14091922252875758
+  "bp_fe-ng45": 0.18203013688536562,
+  "bp-ng45": 0.1076360792938074,
+  "ariane133-ng45": 0.12184954752498094
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis held: all three cases improved, with TNS gains (+19–28%) exceeding WNS gains, consistent with keeping critical nets short during the wirelength-friendly regime. bp-ng45 showed the largest WNS move (+17.4%), suggesting the delayed density ramp most helped its timing-critical cells. Overflow stayed ~110–145, so no legality cost. Next step: sweep the ramp-start offset and `mu` floor jointly on bp-ng45 to find whether the WNS gain saturates before overflow degrades, confirming the mechanism rather than a single lucky setting.",
- "llm_cost_cny": 0.0045081999999999995,
- "eval_wall_s": 0.00010657310485839844,
+ "analysis": "Hypothesis held: tightening the cap to 5.6 improved all three cases, with robust mean +0.105 and all valid. Gains are TNS-heavy (bp-ng45 +15.3%, bp_fe +17.5%) plus strong WNS on bp_fe (+18.9%), consistent with spreading weight across many moderately-critical nets. ariane133 shows the smallest WNS gain (+9.6%) but solid TNS (+14.0%). Next step: sweep the cap between 5.6 and 8.0 (e.g., 6.4, 7.2) to locate the optimum, since c015's relaxation to 11.2 and this tightening both helped—suggesting the current 8.0 is not near the true optimum.",
+ "llm_cost_cny": 0.008260400000000001,
+ "eval_wall_s": 0.0001277923583984375,
  "tags": [
-  "PlaceObj.build_update_density_weight",
-  "LOWER_PCOF",
-  "UPPER_PCOF",
-  "update_density_weight_op_hpwl",
-  "density_weight",
-  "update_gamma"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "net_weighting_scheme",
+  "update_net_weights"
  ],
  "max_overflow": null,
- "prompt_chars": 21595
+ "prompt_chars": 21948
 }

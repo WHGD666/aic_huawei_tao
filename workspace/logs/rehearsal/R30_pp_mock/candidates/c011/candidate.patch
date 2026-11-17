@@ -1,20 +1,28 @@
-diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..72866fc 100755
---- a/Place-LoL/dreamplace/PlaceObj.py
-+++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -846,6 +846,15 @@ class PlaceObj(nn.Module):
-                     mu = UPPER_PCOF * torch.pow(
-                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
-                             min=LOWER_PCOF, max=UPPER_PCOF)
-+                ### allow the density weight to relax more when HPWL degrades,
-+                ### so wirelength/timing is not starved by density pressure
-+                mu = mu.clamp(min=0.5 * LOWER_PCOF)
-+                ### temper early growth of density pressure: when HPWL is still
-+                ### noisy in the first iterations, growing the density weight
-+                ### fast pushes cells into congestion-driven detours that cost
-+                ### TNS later; damp mu toward 1 early, keep full band later.
-+                damp = min(1.0, float(iteration) / 50.0)
-+                mu = mu ** damp
-                 self.density_weight *= mu
- 
-         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+diff --git a/Place-LoL/dreamplace/ops/timing/timing.py b/Place-LoL/dreamplace/ops/timing/timing.py
+--- a/Place-LoL/dreamplace/ops/timing/timing.py
++++ b/Place-LoL/dreamplace/ops/timing/timing.py
+@@ -187,10 +187,15 @@ class TimingOpt(nn.Module):
+         """
+         if self.net_weighting_scheme == "adams": scm = 0
+         elif self.net_weighting_scheme == "lilith": scm = 1
++        elif self.net_weighting_scheme == "adam": scm = 0
+         else:
+             logging.warning("unsupported net-weighting scheme %r" % \
+                 (self.net_weighting_scheme))
+             scm = -1 # Unsupported scheme.
++        # Keep the criticality signal responsive to the current placement so that
++        # many moderately-critical nets retain weight (helps TNS) instead of a few
++        # early-identified critical nets dominating the momentum accumulation.
++        decay = min(self.momentum_decay_factor, 0.5)
+         return timing_cpp.update_net_weights(
+             self.timer.raw_timer, n,
+             self.net_name2id_map,
+@@ -200,7 +205,7 @@ class TimingOpt(nn.Module):
+             torch.from_numpy(self.net_weight_deltas),
+             torch.from_numpy(self.degree_map),
+             scm, # Pass integers instead of strings.
+-            self.momentum_decay_factor,
++            decay,
+             max_net_weight, # -1 indicates infinity upper bound
+             self.ignore_net_degree
+             )

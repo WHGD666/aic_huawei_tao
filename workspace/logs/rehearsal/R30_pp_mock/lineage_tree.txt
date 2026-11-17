@@ -1,37 +1,31 @@
-c001 [gate_failed]   --    Enabling timing-driven net weighting in the analytical place
-c002 [gate_failed]   --    The graph-cut partitioner's `_compute_swap_gain` weights eve
-c003 [    invalid]   --    The density-weight update rule (hpwl-based) uses a fixed mul
-c004 [  evaluated] -0.049  The graph-cut partitioner's area-balance test uses a single 
-c005 [    invalid]   --    The gamma schedule in `update_gamma` is extremely aggressive
-c006 [  evaluated] -0.074  The baseline GNN partitioner trains on a contrastive loss wh
-  c010 [  evaluated] +0.590  The parent's best result came from giving the timing-driven 
-    c022 [    invalid]   --    The parent's contrastive loss already down-weights non-criti
-    c023 [  evaluated] +0.574  The parent's timing-weighted contrastive loss pulls critical
-      c026 [  evaluated] +0.591  Combine the two best independent mechanisms — c024's critica
-      c027 [  evaluated] +0.574  c024's criticality-aware area repair is the strongest indepe
-        c036 [  evaluated] +0.587  c024 (score +0.715) validated criticality-weighted contrasti
-        c037 [    invalid]   --    The parent's criticality-aware area repair uses a fixed shri
-      c031 [    invalid]   --    Recent gate failures suggest the parent patch's `_macro_crit
-      c033 [    invalid]   --    The parent's criticality-aware area repair shrinks critical 
-    c024 [  evaluated] +0.715  The GNN contrastive loss uses a single global edge-weight te
-      c032 [gate_failed]   --    The parent's criticality-weighted contrastive loss is sound,
-      c034 [  evaluated] +0.600  The best validated candidate (c024, score +0.715, robust +0.
-        c035 [  evaluated] +0.512  The parent's criticality penalty in the area-balance repair 
-    c028 [gate_failed]   --    The parent (c023/c027) already uses criticality-weighted con
-    c029 [gate_failed]   --    Combine c023/c027's proven criticality-weighted contrastive 
-    c030 [gate_failed]   --    Fine-tuning the best candidate (criticality-weighted contras
-c007 [  evaluated] +0.490  The baseline timing-driven net-weight update caps weights at
-c008 [gate_failed]   --    The graph-cut partitioner's swap-gain is computed with unwei
-c009 [  evaluated] +0.457  The density-weight multiplicative update band `[LOWER_PCOF, 
-  c011 [  evaluated] +0.487  The parent's relaxed density-weight floor (0.5*LOWER_PCOF) h
-    c012 [  evaluated] +0.588  The parent's density-weight "damp toward 1 early" is a blunt
-      c013 [  evaluated] +0.574  The parent's density-weight relaxations all act on the *glob
-        c015 [  evaluated] +0.270  The parent's density relaxation is gated only on *global* ov
-        c016 [  evaluated] +0.509  The parent's density relaxation is gated only on global over
-          c019 [gate_failed]   --    The parent gates density relaxation on global overflow, but 
-          c020 [  evaluated] +0.516  The parent's density-weight relaxations all act on the *glob
-      c017 [gate_failed]   --    The parent relaxes the density weight only when *global* ove
-      c018 [    invalid]   --    The parent relaxes the density weight only when *global* ove
-    c014 [    invalid]   --    The parent relaxes the *global* density weight but the per-b
-    c021 [  evaluated] +0.592  The parent's density relaxation is a single global scalar, b
-      c025 [  evaluated] +0.650  The parent caps *how high* the per-bin density weight can gr
+c001 [gate_failed]   --    The baseline contrastive partition loss ignores edge weights
+c002 [  evaluated] -0.107  The swap-gain computation in the graph-cut partitioner recom
+c003 [  evaluated] +0.188  Lowering the density-weight growth aggressiveness in the ove
+  c010 [  evaluated] +0.312  The parent (c003) clamps the per-region density weight at 5 
+    c014 [  evaluated] +0.136  Building on c013 (timing-driven weighting + decay<=0.5 + max
+c004 [  evaluated] -0.077  The area-balance tolerance of the partitioner (area_balance_
+  c008 [  evaluated] +0.039  The best single probe was enabling timing-driven net weighti
+    c009 [    invalid]   --    Building on c007 (timing-driven net weighting enabled, +0.42
+c005 [  evaluated] -0.030  The wirelength model's gamma schedule is the single stronges
+c006 [  evaluated] -0.121  The GNN partitioner is under-trained at the fixed 100 epochs
+c007 [  evaluated] +0.423  Enabling timing-driven net weighting is the baseline-most le
+  c011 [  evaluated] +0.453  The parent (c007) enables timing-driven net weighting but re
+    c012 [    invalid]   --    Building on c011 (timing-driven weighting + decay<=0.5), low
+    c013 [  evaluated] +0.619  Building on c011 (timing-driven weighting + decay<=0.5, scor
+      c015 [  evaluated] +0.404  Building on c013 (score +0.619, decay<=0.5, max_net_weight<=
+      c016 [  evaluated] +0.412  The best candidate (c013) clamps the per-net weight cap at 8
+        c017 [    invalid]   --    The best candidate (c016, cap 5.6) is TNS-heavy; nudge the p
+        c018 [  evaluated] +0.505  Building on c016 (cap 5.6, TNS-heavy, score +0.412), modestl
+    c020 [    invalid]   --    Building on the validated best candidate c018 (decay<=0.5, m
+    c021 [  evaluated] +0.947  The best parent (c011/c018 lineage) already clamps momentum 
+      c022 [  evaluated] +0.848  c021 (decay<=0.5, ignore_net_degree halved, adam scheme) is 
+      c023 [  evaluated] +0.773  The best parent c021 (decay<=0.5, ignore_net_degree halved, 
+        c024 [  evaluated] +0.744  c021 (decay<=0.5, ignore_net_degree halved, adam scheme) is 
+          c025 [  evaluated] +0.894  c024 (decay<=0.5, ignore_net_degree halved, adam scheme, per
+            c029 [  evaluated] +0.774  c025's cap of 15.68 is the strongest robust parent (robust +
+            c031 [    invalid]   --    The best parent (c025, cap 15.68, decay<=0.5, halved ignore_
+        c026 [  evaluated] +0.761  c025 (decay<=0.5, ignore_net_degree halved, adam scheme, per
+        c027 [  evaluated] +0.876  c025 (per-net weight cap 15.68) is the strongest robust pare
+          c028 [    invalid]   --    c027's cap of 31.36 is the strongest robust parent; a modest
+          c030 [  evaluated] +0.826  c027 (cap 31.36) is the strongest robust parent; a modest x0
+  c019 [  evaluated] +0.323  Building on c018 (cap 3.92, TNS-heavy, score +0.505, best so

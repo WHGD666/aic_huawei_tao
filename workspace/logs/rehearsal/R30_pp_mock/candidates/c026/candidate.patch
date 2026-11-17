@@ -1,95 +1,47 @@
-diff --git a/Place-MoL/src/partition/GNN/GNN_partition.py b/Place-MoL/src/partition/GNN/GNN_partition.py
-index 6b6cc31..47eeaba 100755
---- a/Place-MoL/src/partition/GNN/GNN_partition.py
-+++ b/Place-MoL/src/partition/GNN/GNN_partition.py
-@@ -123,6 +123,9 @@ class GNNPartitioner(nn.Module):
-         total_loss = 0.0
-         valid_nodes = 0
-         
-+        # Optional per-edge timing weights (shape [n_nodes, n_nodes]); when
-+        # present, critical edges count more in the positive-pair term.
-+        edge_w = getattr(self, '_edge_timing_weights', None)
-         for v in range(n_nodes):
-             # Get neighbors N(v)
-             neighbors = torch.where(adj[v])[0]  # Indices of neighbors
-@@ -142,7 +145,17 @@ class GNNPartitioner(nn.Module):
-             pos_tanh = torch.tanh(pos_dot_products)  # [|N(v)|]
-             # Clamp to ensure positive values for log (tanh range is [-1, 1], we need [epsilon, 1])
-             pos_tanh = torch.clamp(pos_tanh, min=1e-8, max=1.0 - 1e-8)
--            pos_term = torch.log(pos_tanh).sum()
-+            # Timing-aware: weight each positive pair by the edge's timing
-+            # criticality (if available) so critical neighbors are pulled
-+            # together more strongly -> they end up on the same tier.
-+            pos_log = torch.log(pos_tanh)
-+            if edge_w is not None:
-+                try:
-+                    pos_w = edge_w[v, neighbors].to(pos_log.device)
-+                    pos_log = pos_log * pos_w
-+                except Exception:
-+                    pass
-+            pos_term = pos_log.sum()
-             
-             # Second term: sum_{n in Neg(v)} log(tanh(-y_v^T y_n))
-             # For negative samples, we want y_v^T y_n to be small, so -y_v^T y_n is positive
-@@ -195,7 +208,7 @@ class GNNPartitioner(nn.Module):
+diff --git a/Place-LoL/dreamplace/ops/timing/timing.py b/Place-LoL/dreamplace/ops/timing/timing.py
+--- a/Place-LoL/dreamplace/ops/timing/timing.py
++++ b/Place-LoL/dreamplace/ops/timing/timing.py
+@@ -187,10 +187,30 @@ class TimingOpt(nn.Module):
+         """
+         if self.net_weighting_scheme == "adams": scm = 0
+         elif self.net_weighting_scheme == "lilith": scm = 1
++        elif self.net_weighting_scheme == "adam": scm = 0
+         else:
+             logging.warning("unsupported net-weighting scheme %r" % \
+                 (self.net_weighting_scheme))
+             scm = -1 # Unsupported scheme.
++        # Keep the criticality signal responsive to the current placement so that
++        # many moderately-critical nets retain weight (helps TNS) instead of a few
++        # early-identified critical nets dominating the momentum accumulation.
++        decay = min(self.momentum_decay_factor, 0.5)
++        # Tighten the high-fanout ignore threshold so that moderate-fanout nets,
++        # which collectively carry many moderate violations, also receive timing
++        # weight. True clock/reset nets have very high degree and are still
++        # skipped. Clamp to a sane lower bound to avoid weighting everything.
++        if self.ignore_net_degree is not None and self.ignore_net_degree > 0:
++            eff_ignore_degree = max(16, int(self.ignore_net_degree * 0.5))
++        else:
++            eff_ignore_degree = self.ignore_net_degree
++        # Modest cap on per-net weight so that many moderately-critical nets
++        # retain weight (TNS) instead of a few early-critical nets dominating.
++        # Only tighten an existing finite cap; keep infinity if caller wants it.
++        if max_net_weight is None or max_net_weight == np.inf or max_net_weight < 0:
++            eff_max_net_weight = 31.4
++        else:
++            eff_max_net_weight = min(max_net_weight, 31.4)
+         return timing_cpp.update_net_weights(
+             self.timer.raw_timer, n,
+             self.net_name2id_map,
+@@ -200,9 +220,9 @@ class TimingOpt(nn.Module):
+             torch.from_numpy(self.net_weight_deltas),
+             torch.from_numpy(self.degree_map),
+             scm, # Pass integers instead of strings.
+-            self.momentum_decay_factor,
+-            max_net_weight, # -1 indicates infinity upper bound
+-            self.ignore_net_degree
++            decay,
++            eff_max_net_weight, # -1 indicates infinity upper bound
++            eff_ignore_degree
+             )
  
- def train_gnn_partition(
-     graph_builder,
--    num_epochs=100,
-+    num_epochs=40,
-     lr=0.001,
-     device='cpu',
-     hidden_dim=128,
-@@ -469,21 +482,38 @@ def _refine_partition_by_area(
-     """
-     selected_set = set(initial_selection)
-     macro_idx_to_area = {idx: macro_areas[i] for i, idx in enumerate(all_macro_indices)}
--    
-+
-+    # Criticality-aware repair: relax the *effective* area of timing-critical
-+    # macros so the balance repair prefers moving non-critical / low-degree
-+    # macros instead of re-cutting critical paths.  We only change the weight
-+    # used to rank candidate moves; the true area bookkeeping (current_bottom_area)
-+    # is untouched, so the area target and legality are preserved.
-+    _crit = getattr(_refine_partition_by_area, '_macro_criticality', None)
-+    if _crit is not None and len(_crit) == len(all_macro_indices):
-+        _crit_map = {idx: float(_crit[i]) for i, idx in enumerate(all_macro_indices)}
-+        # critical -> shrink effective area (harder to justify moving it).
-+        # Coefficient 6.0 (2x the previously validated 3.0) makes the balance
-+        # repair strongly prefer moving non-critical macros, further protecting
-+        # critical-pair co-location across the tier cut.
-+        _eff_area = {idx: macro_idx_to_area[idx] * (1.0 / (1.0 + 6.0 * min(max(_crit_map.get(idx, 0.0), 0.0), 1.0)))
-+                     for idx in macro_idx_to_area}
-+    else:
-+        _eff_area = macro_idx_to_area
-+
-     current_bottom_area = sum(macro_idx_to_area[idx] for idx in selected_set) + cell_area
-     current_diff = abs(current_bottom_area - target_bottom_area)
--    
-+
-     for iteration in range(max_iterations):
-         if current_diff <= target_bottom_area * area_balance_error:
-             break
--        
-+
-         # Try swapping a macro from bottom to upper or vice versa
-         best_swap = None
-         best_new_diff = current_diff
--        
-+
-         # Try moving a macro from bottom to upper
-         for macro_idx in list(selected_set):
--            new_bottom_area = current_bottom_area - macro_idx_to_area[macro_idx]
-+            new_bottom_area = current_bottom_area - _eff_area.get(macro_idx, macro_idx_to_area[macro_idx])
-             new_diff = abs(new_bottom_area - target_bottom_area)
-             if new_diff < best_new_diff:
-                 best_new_diff = new_diff
-@@ -492,7 +522,7 @@ def _refine_partition_by_area(
-         # Try moving a macro from upper to bottom
-         for macro_idx in all_macro_indices:
-             if macro_idx not in selected_set:
--                new_bottom_area = current_bottom_area + macro_idx_to_area[macro_idx]
-+                new_bottom_area = current_bottom_area + _eff_area.get(macro_idx, macro_idx_to_area[macro_idx])
-                 new_diff = abs(new_bottom_area - target_bottom_area)
-                 if new_diff < best_new_diff:
-                     best_new_diff = new_diff
+     def evaluate_slack(self):

@@ -1,32 +1,35 @@
 {
  "id": "c002",
  "parent": null,
- "hypothesis": "The graph-cut partitioner's `_compute_swap_gain` weights every cut edge equally (uniform adjacency), so the partition ignores timing criticality; making the swap-gain use the GraphBuilder's edge weights (which can carry net criticality) will keep critical paths same-tier and reduce TNS after the fixed repair pass.",
- "expected_effect": "TNS improves modestly on all three circuits (critical nets stay intra-tier, fewer cross-tier detours); WNS roughly unchanged or slightly better; overflow unchanged; runtime unchanged.",
- "files_changed": [],
- "phase": "probe",
- "created_at": 1794906193.8904338,
- "status": "gate_failed",
- "gate_report": "ERROR: no files changed",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": null,
- "fail_reasons": [
-  "ERROR: no files changed"
+ "hypothesis": "The swap-gain computation in the graph-cut partitioner recomputes cut contributions from raw adjacency but double-counts the exchanged edge (node1<->node2) because it is counted in both `node1_to_complement`/`node2_to_partition` before and again in `node1_to_partition`/`node2_to_complement` after; correcting the gain so the mutually-exchanged edge cancels exactly yields a more accurate min-cut refinement that reduces cross-tier cuts (and thus cross-tier detours), improving TNS across all circuits.",
+ "expected_effect": "",
+ "files_changed": [
+  "Place-MoL/src/partition/graph_cut/graph_cut.py"
  ],
- "analysis": "",
- "llm_cost_cny": 0.0041154,
- "eval_wall_s": 0.0,
+ "phase": "probe",
+ "created_at": 1794921593.1058528,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": -0.10700682305378749,
+ "score_robust": -0.10702029360749468,
+ "per_case": {
+  "bp_fe-ng45": 0.025174869427549457,
+  "bp-ng45": 0.003623186223368121,
+  "ariane133-ng45": -0.13580487870470506
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis did not hold: total score is −0.107, with only 2/3 cases improving slightly and ariane133-ng45 regressing sharply (dWNS −9.3%, dTNS −16.4%). The mechanism claim (fewer cross-tier cuts → less detour → better TNS) is contradicted by ariane's large TNS loss despite overflow ~126, suggesting the gain correction perturbs partition balance or timing-critical assignments rather than cleanly reducing cuts. bp/bp_fe gains are marginal and within noise. Next step: instrument the partitioner to log actual cut-size deltas per move and correlate with per-path timing, isolating whether the exchanged-edge cancellation changes move acceptance or just gain sign.",
+ "llm_cost_cny": 0.0038498000000000004,
+ "eval_wall_s": 0.00010418891906738281,
  "tags": [
-  "GraphCutPartitioner._build_adjacency",
-  "GraphBuilder.update_edge_weights",
-  "GraphBuilder._build_graph",
+  "_compute_swap_gain",
+  "_compute_cut_weight",
+  "adjacency",
   "edge_weights",
-  "GNNPartitioner.contrastive_loss",
-  "gnn_partition",
-  "_refine_partition_by_embedding_distance"
+  "min_cut",
+  "_is_area_balanced"
  ],
  "max_overflow": null,
- "prompt_chars": 17992
+ "prompt_chars": 18059
 }

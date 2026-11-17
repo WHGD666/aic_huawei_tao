@@ -1,30 +1,35 @@
 {
  "id": "c008",
- "parent": null,
- "hypothesis": "The graph-cut partitioner's swap-gain is computed with unweighted adjacency, so timing-critical cut edges cost the same as non-critical ones; feeding the graph builder's edge weights (criticality) into the adjacency used by `_compute_swap_gain` and `_compute_cut_weight` will bias the partition toward keeping critical nets intra-tier, reducing cross-tier detours and TNS.",
- "expected_effect": "TNS improves modestly across all circuits (fewer critical cross-tier nets); WNS small improvement; overflow unchanged or slightly better; runtime unchanged.",
- "files_changed": [],
- "phase": "probe",
- "created_at": 1794906230.0920308,
- "status": "gate_failed",
- "gate_report": "ERROR: no files changed",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": null,
- "fail_reasons": [
-  "ERROR: no files changed"
+ "parent": "c004",
+ "hypothesis": "The best single probe was enabling timing-driven net weighting (c007, +0.423). Building on c004's looser area balance, the strongest available lever in the shown chunks is to make the partitioner's area-balance repair less disruptive to the timing-critical clustering: raise `area_balance_error` further (0.15 -> 0.20) so fewer macros are force-flipped away from their embedding cluster, preserving the wirelength-aware tier assignment that reduces cross-tier detours and TNS.",
+ "expected_effect": "",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
  ],
- "analysis": "",
- "llm_cost_cny": 0.005354200000000001,
- "eval_wall_s": 0.0,
+ "phase": "structural",
+ "created_at": 1794921621.2584887,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.039157516860686734,
+ "score_robust": -0.019877736471649823,
+ "per_case": {
+  "bp_fe-ng45": -0.007198299263595294,
+  "bp-ng45": -0.013140543756632516,
+  "ariane133-ng45": 0.05949635988091454
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis did not hold: raising `area_balance_error` to 0.20 gave only +0.039 total and a negative robust score (-0.020), with two of three cases slightly negative. Ariane improved (score +0.059, dTNS +10.6%), consistent with fewer forced macro flips preserving timing-critical clustering, but bp-ng45 and bp_fe-ng45 regressed (dWNS -5.3% and +1.7% respectively), suggesting the looser balance hurts wirelength/overflow on those designs. Next step: sweep intermediate values (0.16–0.18) or apply the looser balance selectively per design, since the benefit appears case-dependent rather than universal.",
+ "llm_cost_cny": 0.007576,
+ "eval_wall_s": 0.000110626220703125,
  "tags": [
-  "GraphCutPartitioner._build_adjacency",
-  "edge_weights",
-  "adjacency",
-  "_compute_swap_gain",
-  "_compute_cut_weight"
+  "gnn_partition",
+  "area_balance_error",
+  "_refine_partition_by_area",
+  "partition_with_kmeans",
+  "TimingOpt",
+  "max_net_weight"
  ],
  "max_overflow": null,
- "prompt_chars": 20515
+ "prompt_chars": 19515
 }

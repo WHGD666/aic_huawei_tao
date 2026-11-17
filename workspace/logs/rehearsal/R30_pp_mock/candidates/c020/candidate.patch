@@ -1,57 +1,33 @@
-diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..ec7323b 100755
---- a/Place-LoL/dreamplace/PlaceObj.py
-+++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -846,6 +846,30 @@ class PlaceObj(nn.Module):
-                     mu = UPPER_PCOF * torch.pow(
-                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
-                             min=LOWER_PCOF, max=UPPER_PCOF)
-+                ### allow the density weight to relax more when HPWL degrades,
-+                ### so wirelength/timing is not starved by density pressure,
-+                ### but only while overflow is not rising: if the current
-+                ### overflow exceeds the previous one the cells are being
-+                ### pushed into congested regions, so keep the full density
-+                ### pressure (do not relax) to clear the congestion first.
-+                try:
-+                    cur_ovf = float(cur_metric.overflow)
-+                    prev_ovf = float(getattr(self, "_prev_overflow", cur_ovf))
-+                except Exception:
-+                    cur_ovf = prev_ovf = 0.0
-+                self._prev_overflow = cur_ovf
-+                if cur_ovf <= prev_ovf:
-+                    mu = mu.clamp(min=0.5 * LOWER_PCOF)
-+                ### temper early growth of density pressure: when HPWL is still
-+                ### noisy in the first iterations, growing the density weight
-+                ### fast pushes cells into congestion-driven detours that cost
-+                ### TNS later. Use a smooth quadratic ramp over a longer window
-+                ### so the placer stays longer in a wirelength-friendly regime
-+                ### and reaches full density strength only after the layout has
-+                ### settled; this reduces congestion-driven detours (TNS).
-+                t = min(1.0, float(iteration) / 150.0)
-+                damp = t * t * t
-+                mu = mu ** damp
-                 self.density_weight *= mu
- 
-         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
-@@ -909,6 +933,21 @@ class PlaceObj(nn.Module):
+diff --git a/Place-LoL/dreamplace/ops/timing/timing.py b/Place-LoL/dreamplace/ops/timing/timing.py
+--- a/Place-LoL/dreamplace/ops/timing/timing.py
++++ b/Place-LoL/dreamplace/ops/timing/timing.py
+@@ -187,10 +187,20 @@ class TimingOpt(nn.Module):
+         """
+         if self.net_weighting_scheme == "adams": scm = 0
+         elif self.net_weighting_scheme == "lilith": scm = 1
++        elif self.net_weighting_scheme == "adam": scm = 0
          else:
-             overflow_avg = overflow
-         coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
-+        ### Late-stage refinement: once overflow is already low, the HPWL
-+        ### model is the dominant source of error and a smaller gamma gives a
-+        ### sharper (closer to true HPWL) gradient on the many moderate nets
-+        ### that dominate TNS. Only sharpen when overflow is comfortably low,
-+        ### and clamp the total coef so we never enter the pile-up regime
-+        ### that produced legality/congestion failures in earlier candidates.
-+        try:
-+            ovf_val = float(overflow_avg.reshape(-1)[0]) if overflow.numel() > 0 else 1.0
-+        except Exception:
-+            ovf_val = 1.0
-+        if ovf_val < 0.10:
-+            ### sharpen modestly: up to 2x smaller gamma as overflow -> 0
-+            sharpen = 1.0 - 0.5 * (1.0 - ovf_val / 0.10)
-+            coef = coef * sharpen
-+        coef = coef.clamp(min=1e-3, max=10.0)
-         self.gamma.data.fill_((base_gamma * coef).item())
-         return True
- 
+             logging.warning("unsupported net-weighting scheme %r" % \
+                 (self.net_weighting_scheme))
+             scm = -1 # Unsupported scheme.
++        # Keep the criticality signal responsive to the current placement so that
++        # many moderately-critical nets retain weight (helps TNS) instead of a few
++        # early-identified critical nets dominating the momentum accumulation.
++        decay = min(self.momentum_decay_factor, 0.5)
++        # Conservative tightening of the per-net weight cap (x0.7 of the validated
++        # best ~3.92) spreads weight over more moderately-critical nets to help TNS.
++        if max_net_weight is not None and max_net_weight > 0 and \
++                np.isfinite(max_net_weight):
++            max_net_weight = max_net_weight * 0.7
+         return timing_cpp.update_net_weights(
+             self.timer.raw_timer, n,
+             self.net_name2id_map,
+@@ -200,7 +210,7 @@ class TimingOpt(nn.Module):
+             torch.from_numpy(self.net_weight_deltas),
+             torch.from_numpy(self.degree_map),
+             scm, # Pass integers instead of strings.
+-            self.momentum_decay_factor,
++            decay,
+             max_net_weight, # -1 indicates infinity upper bound
+             self.ignore_net_degree
+             )

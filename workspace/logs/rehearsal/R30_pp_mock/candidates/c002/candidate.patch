@@ -1,0 +1,16 @@
+diff --git a/Place-MoL/src/partition/graph_cut/graph_cut.py b/Place-MoL/src/partition/graph_cut/graph_cut.py
+--- a/Place-MoL/src/partition/graph_cut/graph_cut.py
++++ b/Place-MoL/src/partition/graph_cut/graph_cut.py
+@@ -300,8 +300,10 @@ class GraphCutPartitioner:
+         
+         # After swap: node1 moves to complement, node2 moves to partition
+         # New cut edges: node1 -> partition, node2 -> complement
+-        node1_to_partition = sum(self.adjacency[node1, p] for p in partition if p != node1)
+-        node2_to_complement = sum(self.adjacency[node2, c] for c in complement if c != node2)
++        # Exclude node1 and node2 themselves from both sums so the exchanged
++        # edge (node1,node2) cancels exactly between the before and after states.
++        node1_to_partition = sum(self.adjacency[node1, p] for p in partition if p != node1 and p != node2)
++        node2_to_complement = sum(self.adjacency[node2, c] for c in complement if c != node2 and c != node1)
+         new_cut_contribution = node1_to_partition + node2_to_complement
+         
+         # The edge between node1 and node2:

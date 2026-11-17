@@ -1,0 +1,98 @@
+{
+ "candidate_id": "c002",
+ "wall_s": 0.00010418891906738281,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": -0.34729558086429124,
+   "tns": -116.05202977318692,
+   "overflow": 95.4571255747772,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": -0.28723713640979553,
+   "tns": -112.97828971172044,
+   "overflow": 110.2618214796892,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": -0.3971048890159591,
+   "tns": -120.22941000317574,
+   "overflow": 138.015260080754,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": -0.6210537396434245,
+   "tns": -485.5661775960054,
+   "overflow": 157.69135681792707,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": -0.5359838062102056,
+   "tns": -473.41898262891203,
+   "overflow": 82.67534613764133,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": -0.5822720851152281,
+   "tns": -420.73788761717805,
+   "overflow": 105.77285210402852,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": -0.861189916768548,
+   "tns": -1098.8117552217839,
+   "overflow": 148.6481607358147,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": -0.838972991680995,
+   "tns": -1047.3273958579841,
+   "overflow": 120.33872305563911,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": -0.9224211859241506,
+   "tns": -1171.6499416594856,
+   "overflow": 109.30425481602545,
+   "valid": true,
+   "fail_reason": ""
+  }
+ },
+ "stage_logs": {
+  "bp_fe-ng45/1001": "[INFO] wns=-0.347 tns=-116.1 overflow=95\n",
+  "bp_fe-ng45/1002": "[INFO] wns=-0.287 tns=-113.0 overflow=110\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.397 tns=-120.2 overflow=138\n",
+  "bp-ng45/1001": "[INFO] wns=-0.621 tns=-485.6 overflow=158\n",
+  "bp-ng45/1002": "[INFO] wns=-0.536 tns=-473.4 overflow=83\n",
+  "bp-ng45/1003": "[INFO] wns=-0.582 tns=-420.7 overflow=106\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.861 tns=-1098.8 overflow=149\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.839 tns=-1047.3 overflow=120\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.922 tns=-1171.6 overflow=109\n"
+ }
+}

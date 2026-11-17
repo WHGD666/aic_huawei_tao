@@ -1,34 +1,34 @@
 {
  "id": "c024",
- "parent": "c010",
- "hypothesis": "The GNN contrastive loss uses a single global edge-weight tensor, but the *area-balance repair* then flips nodes by pure area delta, potentially undoing critical-pair co-location; by making the swap-gain prefer moving *non-critical* (low timing-weight) nodes and penalize breaking critical nets, we keep timing-critical logic co-located while still meeting area balance — reducing TNS without WNS regressions.",
- "expected_effect": "WNS small improvement (~+2-5%), TNS improvement (~+5-15%), overflow unchanged, runtime unchanged.",
+ "parent": "c023",
+ "hypothesis": "c021 (decay<=0.5, ignore_net_degree halved, adam scheme) is the strongest robust parent; combining it with the modest cap mechanism confirmed in c023 (cap 3.92, all cases valid, +0.77) — but c021's own parent patch already carries cap 3.92, so the untested combination is to *relax* the cap modestly (x2 → 7.84) on top of c021's decay/ignore-degree changes, letting the strongest critical nets pull slightly harder while the halved ignore-degree still spreads weight to moderate-fanout nets for TNS.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906349.6231596,
+ "phase": "combine",
+ "created_at": 1794921699.1995354,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.7151957903697289,
- "score_robust": 0.21066438693423806,
+ "score_total": 0.7444247657129562,
+ "score_robust": 0.20755805736719898,
  "per_case": {
-  "bp_fe-ng45": 0.24041374835457288,
-  "bp-ng45": 0.20346855105613992,
-  "ariane133-ng45": 0.27131349095901613
+  "bp_fe-ng45": 0.2448498201393455,
+  "bp-ng45": 0.2994101259091185,
+  "ariane133-ng45": 0.20016481966449232
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "Hypothesis held: all three cases improved, with dTNS gains (+27.5% to +36.0%) exceeding dWNS gains (+9.4% to +14.4%), consistent with the mechanism—preferring non-critical swaps preserves critical-pair co-location while area balance is still met. Overflow (~87–147) suggests some congestion cost worth monitoring. Next step: sweep the criticality penalty weight and log how many critical nets are broken per repair pass, to confirm the mechanism directly and find the TNS/overflow sweet spot.",
- "llm_cost_cny": 0.005972,
- "eval_wall_s": 0.0001628398895263672,
+ "analysis": "The hypothesis held: relaxing the cap to 7.84 on c021's decay/ignore-degree base is robustly positive (total +0.744, robust +0.208, all valid). All three cases improved, with bp-ng45 strongest (dTNS +38.4%, dWNS +17.0%) and ariane133-ng45 the floor (+0.200). Mechanism: letting top critical nets pull harder while halved ignore-degree still spreads weight to moderate-fanout nets lifts both WNS and TNS, with overflow staying modest (~115–162). Next step: sweep cap between 3.92 and 7.84 (e.g., 5.5, 6.5) to locate the TNS/overflow optimum before committing.",
+ "llm_cost_cny": 0.005331399999999999,
+ "eval_wall_s": 9.965896606445312e-05,
  "tags": [
-  "_refine_partition_by_area",
-  "_edge_timing_weights",
-  "contrastive_loss",
-  "update_edge_weights",
-  "gnn_partition"
+  "update_net_weights",
+  "momentum_decay_factor",
+  "max_net_weight",
+  "ignore_net_degree",
+  "net_weighting_scheme"
  ],
  "max_overflow": null,
- "prompt_chars": 21275
+ "prompt_chars": 21144
 }

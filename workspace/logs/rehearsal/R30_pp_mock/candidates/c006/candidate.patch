@@ -1,5 +1,4 @@
 diff --git a/Place-MoL/src/partition/GNN/GNN_partition.py b/Place-MoL/src/partition/GNN/GNN_partition.py
-index 6b6cc31..8894742 100755
 --- a/Place-MoL/src/partition/GNN/GNN_partition.py
 +++ b/Place-MoL/src/partition/GNN/GNN_partition.py
 @@ -195,7 +195,7 @@ class GNNPartitioner(nn.Module):
@@ -7,7 +6,7 @@ index 6b6cc31..8894742 100755
  def train_gnn_partition(
      graph_builder,
 -    num_epochs=100,
-+    num_epochs=40,
++    num_epochs=300,
      lr=0.001,
      device='cpu',
      hidden_dim=128,

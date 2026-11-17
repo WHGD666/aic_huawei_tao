@@ -1,35 +1,37 @@
 {
  "id": "c007",
  "parent": null,
- "hypothesis": "The baseline timing-driven net-weight update caps weights at `max_net_weight` and uses the default `net_weighting_scheme`; switching the update to the \"lilith\" scheme (momentum-based criticality accumulation) via the shown `TimingOpt.update_net_weights` dispatch will spread weight onto more moderately-critical nets, reducing many moderate violations (TNS) rather than only the worst path (WNS).",
- "expected_effect": "TNS improves on all three cases (more nets get nonzero weight), WNS roughly neutral to slightly better, overflow unchanged, runtime unchanged.",
+ "hypothesis": "Enabling timing-driven net weighting is the baseline-most lever (P-L1) and is currently off; turning it on with the default `adam`-style scheme lets the analytical placer pull critical nets together more strongly, which should reduce many moderate violations (TNS) across all circuits without changing partition/legality.",
+ "expected_effect": "",
  "files_changed": [
   "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
  "phase": "probe",
- "created_at": 1794906222.6679363,
+ "created_at": 1794921616.5218008,
  "status": "evaluated",
  "gate_report": "OK",
- "score_total": 0.4897695492207977,
- "score_robust": 0.1258863916527909,
+ "score_total": 0.4233993197743262,
+ "score_robust": 0.0989701781059717,
  "per_case": {
-  "bp_fe-ng45": 0.19649528662376,
-  "bp-ng45": 0.18222051860305852,
-  "ariane133-ng45": 0.11105374399397916
+  "bp_fe-ng45": 0.09028516724638336,
+  "bp-ng45": 0.13958608989014265,
+  "ariane133-ng45": 0.1935280626378002
  },
  "all_valid": true,
  "fail_reasons": [],
- "analysis": "The hypothesis held: all three cases improved, with dTNS gains (+9.2% to +22.2%) generally exceeding dWNS gains (+12.4% to +15.4%), consistent with lilith spreading weight to moderately-critical nets and reducing many violations rather than only the worst path. All runs valid, no failures. Next step: sweep the lilith momentum/accumulation parameter and `max_net_weight` cap to confirm the TNS-over-WNS tradeoff is tunable and check overflow stays acceptable (~103–113) at higher weight spread.",
- "llm_cost_cny": 0.0035009999999999998,
- "eval_wall_s": 0.00016450881958007812,
+ "analysis": "The hypothesis held: all three cases are valid and improve, with dWNS and dTNS both positive (e.g., ariane133-ng45 +19.2%/+19.3%, bp-ng45 +12.2%/+15.0%, bp_fe-ng45 +9.4%/+8.7%), consistent with timing-driven net weighting pulling critical nets together and reducing moderate violations without legality issues. Overflow remains nonzero (~103–146), so congestion is a secondary concern. Next step: sweep the net-weighting strength/`adam` parameters and confirm overflow stays bounded, then check whether gains persist at higher utilization.",
+ "llm_cost_cny": 0.0047138,
+ "eval_wall_s": 0.00011587142944335938,
  "tags": [
+  "timing_opt_flag",
   "net_weighting_scheme",
   "max_net_weight",
   "momentum_decay_factor",
   "update_net_weights",
-  "timing_opt_flag",
-  "params.net_weighting_scheme"
+  "net_criticality",
+  "NonLinearPlace.__call__",
+  "BasicPlace.build_timing_op"
  ],
  "max_overflow": null,
- "prompt_chars": 19561
+ "prompt_chars": 19763
 }

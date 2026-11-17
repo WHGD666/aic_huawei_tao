@@ -76,11 +76,15 @@ def _sha256_tree(root: Path, rels: List[str]) -> str:
 
 
 def _git_head(path: Path) -> str:
-    try:
-        r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=path, capture_output=True, text=True, timeout=10)
-        return r.stdout.strip() if r.returncode == 0 else ""
-    except Exception:
-        return ""
+    """向上找 git 仓库根（workspace/ 可能只是仓库的子目录）。"""
+    for p in [path] + list(path.parents):
+        if (p / ".git").exists():
+            try:
+                r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=p, capture_output=True, text=True, timeout=10)
+                return r.stdout.strip() if r.returncode == 0 else ""
+            except Exception:
+                return ""
+    return ""
 
 
 class Harness:

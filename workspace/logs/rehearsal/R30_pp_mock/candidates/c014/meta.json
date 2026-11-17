@@ -1,40 +1,35 @@
 {
  "id": "c014",
- "parent": "c011",
- "hypothesis": "The parent relaxes the *global* density weight but the per-bin density penalty is still driven by a single scalar `density_weight`; the TNS cost comes from a few over-dense bins forcing detours. Scaling the density weight per-bin (using the preconditioner's per-region `density_weight` vector) so already-congested regions get relatively more pressure while light regions relax would reduce detours and moderate violations broadly without changing the global balance.",
+ "parent": "c010",
+ "hypothesis": "Building on c013 (timing-driven weighting + decay<=0.5 + max_net_weight=8, score +0.619), the per-region density update currently inflates the density penalty up to a hard clamp of 5 and keeps growing the step size; capping the per-region density weight at a lower ceiling (3.5) and slowing the step-size growth further (1.015/1.025) reduces over-spreading in already-nearly-legal regions, shortening critical wires and giving rsz more room, which should reduce TNS across all circuits.",
  "expected_effect": "",
  "files_changed": [
   "Place-LoL/dreamplace/PlaceObj.py"
  ],
  "phase": "structural",
- "created_at": 1794906266.6739917,
- "status": "invalid",
+ "created_at": 1794921647.6540112,
+ "status": "evaluated",
  "gate_report": "OK",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": false,
- "fail_reasons": [
-  "bp_fe-ng45/1001:stage timeout",
-  "bp_fe-ng45/1002:legalization overlap",
-  "bp_fe-ng45/1003:KeyError in partition",
-  "bp-ng45/1001:legalization overlap",
-  "bp-ng45/1002:HBT min-spacing violation",
-  "bp-ng45/1003:legalization overlap"
- ],
- "analysis": "Invalid: mixed legality (legalization overlap, HBT min-spacing), crash (KeyError in partition), and timeout failures. Systematic across all seeds of both bp_fe-ng45 and bp-ng45 cases, so the candidate says nothing about the hypothesis. Likely the per-bin density vector is malformed or misindexed (KeyError) and over-aggressive per-region pressure drives overlaps/spacing violations. To make it legal: validate the per-region `density_weight` vector shape/indexing against bins, clamp per-bin scaling to a bounded range, and add a legality-repair/rollback guard before evaluating.",
- "llm_cost_cny": 0.0048262,
- "eval_wall_s": 9.250640869140625e-05,
+ "score_total": 0.13608168953765515,
+ "score_robust": 0.03131788561197073,
+ "per_case": {
+  "bp_fe-ng45": 0.047284768997161886,
+  "bp-ng45": 0.027280684016767767,
+  "ariane133-ng45": 0.0615162365237255
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "Hypothesis held: all three cases improved TNS (ariane +6.3%, bp +4.9%, bp_fe +8.9%), with robust mean-std +0.031 and all_valid. WNS gains are mixed (ariane +6.6%, bp -0.5%, bp_fe -2.0%), suggesting the lower density ceiling (3.5) and slower step growth (1.015/1.025) reduce over-spreading, shortening critical wires and freeing rsz—most visible where overflow is high (bp_fe ~117). Next step: sweep the density ceiling (3.0/3.5/4.0) at fixed step growth to isolate which lever drives the TNS gain and check WNS regressions on bp/bp_fe.",
+ "llm_cost_cny": 0.0049261999999999995,
+ "eval_wall_s": 0.00010418891906738281,
  "tags": [
-  "build_update_density_weight",
-  "precondition_op",
   "density_weight",
-  "update_mask",
   "stop_overflow",
   "density_quad_coeff",
-  "gamma",
-  "target_density"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "timing_opt_flag"
  ],
  "max_overflow": null,
- "prompt_chars": 20483
+ "prompt_chars": 21542
 }

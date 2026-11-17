@@ -1,32 +1,34 @@
 {
  "id": "c019",
- "parent": "c016",
- "hypothesis": "The parent gates density relaxation on global overflow, but the real TNS cost is congestion-driven detours that appear as *per-region* overflow; gate the extra relaxation (mu floor 0.5*LOWER_PCOF) on the *worst-region* overflow not having grown, so density pressure is fully restored exactly in the bins that are getting congested, while wirelength-friendly relaxation stays active where congestion is stable.",
- "expected_effect": "WNS slightly better, TNS better (fewer detours in hot regions), overflow same or lower, runtime unchanged.",
+ "parent": "c007",
+ "hypothesis": "Building on c018 (cap 3.92, TNS-heavy, score +0.505, best so far), the cap is already the only active lever in this patch; nudge it modestly downward by x0.7 to ~2.74 so weight concentrates further on the most-critical nets and spreads moderate-violation reduction, confirming whether the trend of tighter caps continues to help TNS without harming legality.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-LoL/dreamplace/PlaceObj.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906316.242392,
- "status": "gate_failed",
- "gate_report": "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": null,
- "fail_reasons": [
-  "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
- ],
- "analysis": "",
- "llm_cost_cny": 0.00556,
- "eval_wall_s": 0.0,
+ "phase": "final",
+ "created_at": 1794921666.9008193,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.32314449689026686,
+ "score_robust": 0.08063588365391947,
+ "per_case": {
+  "bp_fe-ng45": 0.14144850405736567,
+  "bp-ng45": 0.10654620432571844,
+  "ariane133-ng45": 0.07514978850718272
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: tightening the cap to ~2.74 improved TNS across all three cases (dTNS +1.2% to +17.7%) with all runs valid, confirming the tighter-cap trend. Gains are broadest on bp_fe-ng45 (score +0.141, dTNS +17.7%) and bp-ng45 (+11.9%), consistent with concentrating weight on critical nets while still reducing moderate violations; ariane133-ng45 shows only marginal TNS (+1.2%) despite strong dWNS (+17.4%), suggesting its TNS is dominated by many moderate nets the tighter cap under-serves. Next step: test an intermediate cap (~3.2) or a case-adaptive cap to recover ariane's TNS without losing the bp gains.",
+ "llm_cost_cny": 0.0047342,
+ "eval_wall_s": 9.441375732421875e-05,
  "tags": [
-  "PlaceObj.update_density_weight",
-  "cur_metric.overflow",
-  "update_density_weight_op_overflow",
-  "density_weight",
-  "stop_overflow"
+  "max_net_weight",
+  "net_weighting_scheme",
+  "momentum_decay_factor",
+  "update_net_weights",
+  "net_criticality"
  ],
  "max_overflow": null,
- "prompt_chars": 22100
+ "prompt_chars": 19561
 }

@@ -1,14 +1,16 @@
 diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
-index 44725b3..82d5a27 100755
 --- a/Place-LoL/dreamplace/PlaceObj.py
 +++ b/Place-LoL/dreamplace/PlaceObj.py
-@@ -909,6 +909,9 @@ class PlaceObj(nn.Module):
+@@ -908,7 +908,11 @@ class PlaceObj(nn.Module):
+             overflow_avg = overflow
          else:
              overflow_avg = overflow
-         coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
-+        # clamp the gamma multiplier to a modest band so the wirelength model
-+        # never becomes degenerate (flat gradients early, near-HPWL late)
-+        coef = torch.clamp(coef, min=0.5, max=2.0)
+-        coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
++        # Gentler overflow->gamma coupling: keep gamma closer to base_gamma
++        # (HPWL-like, tighter clustering) and only diffuse when overflow is
++        # clearly high.  Baseline exponent slope was 20/9 (~2.22); halving it
++        # reduces the gamma spread across the whole overflow range.
++        coef = torch.pow(10, (overflow_avg - 0.1) * 10 / 9 - 1)
          self.gamma.data.fill_((base_gamma * coef).item())
          return True
  

@@ -1,38 +1,36 @@
 {
  "id": "c022",
- "parent": "c010",
- "hypothesis": "The parent's contrastive loss already down-weights non-critical edges (via `_edge_timing_weights`), but the *area-balance repair* (`_refine_partition_by_area`) still moves whichever macro most cheaply fixes area, ignoring timing — so it can rip a timing-critical macro across tiers. Penalize moves of timing-critical macros (high incident critical-edge weight) by requiring larger area improvement before accepting them, so balance repair preserves critical-path locality.",
- "expected_effect": "TNS improves on all three cases (fewer critical nets cut by repair); WNS flat-to-slightly-better; overflow unchanged; runtime unchanged.",
+ "parent": "c021",
+ "hypothesis": "c021 (decay<=0.5, ignore_net_degree halved, adam scheme) is the best robust candidate; combining it with a *modest* per-net weight cap (the independently-successful c013/c016/c018 lineage showed TNS-heavy gains from capping max_net_weight) should spread weight to moderate nets while preventing a few early-critical nets from dominating — but do it inside timing.py so it applies regardless of the caller's max_net_weight, using a moderate cap factor rather than the aggressive 3.92.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
- "phase": "structural",
- "created_at": 1794906334.9756203,
- "status": "invalid",
+ "phase": "combine",
+ "created_at": 1794921689.066365,
+ "status": "evaluated",
  "gate_report": "OK",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": false,
- "fail_reasons": [
-  "bp_fe-ng45/1001:stage timeout",
-  "bp_fe-ng45/1002:KeyError in partition",
-  "bp_fe-ng45/1003:legalization overlap",
-  "bp-ng45/1001:HBT min-spacing violation",
-  "bp-ng45/1002:stage timeout",
-  "bp-ng45/1003:KeyError in partition"
- ],
- "analysis": "Invalid: mixed legality (overlap, HBT spacing), crash (KeyError in partition), and timeout failures across all seeds of both cases — systematic, not sporadic. This candidate says nothing about the hypothesis. The KeyError and timeouts suggest the added criticality-weight logic breaks partition bookkeeping or explodes runtime; overlaps/spacing suggest repair no longer converges. To make the idea legal: gate the penalty behind a bounded weight, guard missing edge-weight keys, cap repair iterations, and re-run legality checks after each accepted move.",
- "llm_cost_cny": 0.006261,
- "eval_wall_s": 0.00011682510375976562,
+ "score_total": 0.84795728901045,
+ "score_robust": 0.17323988122895695,
+ "per_case": {
+  "bp_fe-ng45": 0.4225563402297765,
+  "bp-ng45": 0.15545686782866355,
+  "ariane133-ng45": 0.26994408095200995
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: the modest in-timing.py cap preserved c021's robustness (all valid, min_case +0.155) while adding TNS-heavy gains. bp_fe-ng45 moved most (dWNS +33.2%, dTNS +48.2%), consistent with capping early-critical nets to spread weight to moderate nets; ariane133-ng45 and bp-ng45 also improved. Next step: sweep the cap factor between 1.0 and 3.92 (e.g. 1.5, 2.0, 2.5) to locate the optimum and confirm the moderate cap beats both no-cap and aggressive-cap baselines.",
+ "llm_cost_cny": 0.005191399999999999,
+ "eval_wall_s": 9.322166442871094e-05,
  "tags": [
-  "_refine_partition_by_area",
-  "_edge_timing_weights",
-  "contrastive_loss",
-  "_refine_partition_by_embedding_distance",
-  "GNN_partitioner.forward",
-  "gnn_partition"
+  "max_net_weight",
+  "momentum_decay_factor",
+  "ignore_net_degree",
+  "net_weighting_scheme",
+  "update_net_weights",
+  "NonLinearPlace.__call__",
+  "timing_opt_flag"
  ],
  "max_overflow": null,
- "prompt_chars": 21275
+ "prompt_chars": 20645
 }

@@ -1,32 +1,34 @@
 {
  "id": "c029",
- "parent": "c010",
- "hypothesis": "Combine c023/c027's proven criticality-weighted contrastive loss (already in parent) with a modest fine-tune of its edge-weighting strength in the positive-pair term — clamping the per-edge timing weight to a bounded range so critical edges dominate but non-critical edges are not fully suppressed, improving robustness across circuits without new mechanisms.",
- "expected_effect": "Small positive dTNS (+2–6%) and neutral-to-slightly-positive dWNS across all three cases; no overflow change; no runtime change (same epochs).",
+ "parent": "c025",
+ "hypothesis": "c025's cap of 15.68 is the strongest robust parent (robust +0.254, min +0.245); a modest x0.5 tightening to 7.84 was already tried (c024), so instead I fine-tune the *other* coefficient in the same mechanism — the momentum decay clamp — from 0.5 to 0.25 (x0.5), which makes the criticality signal even more responsive to the current placement so many moderately-critical nets keep weight (TNS) while the per-net cap stays at c025's proven 15.68.",
+ "expected_effect": "",
  "files_changed": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py"
+  "Place-LoL/dreamplace/ops/timing/timing.py"
  ],
  "phase": "combine",
- "created_at": 1794907464.336998,
- "status": "gate_failed",
- "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
- "score_total": null,
- "score_robust": null,
- "per_case": {},
- "all_valid": null,
- "fail_reasons": [
-  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
- ],
- "analysis": "",
- "llm_cost_cny": 0.005712399999999999,
- "eval_wall_s": 0.0,
+ "created_at": 1794921717.4628835,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.7742431799440539,
+ "score_robust": 0.21474935761615,
+ "per_case": {
+  "bp_fe-ng45": 0.20495647898926225,
+  "bp-ng45": 0.2581898286776276,
+  "ariane133-ng45": 0.3110968722771641
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: tightening the momentum decay clamp to 0.25 while keeping c025's 15.68 cap improved all three cases (total +0.774, robust +0.215, min +0.205, all valid). Gains concentrate in dTNS (+28–42%) with smaller dWNS (+8–15%), consistent with the mechanism—more responsive criticality keeps moderately-critical nets weighted, improving TNS. Overflow rises modestly (~82–148). Next step: sweep the decay clamp between 0.25 and 0.5 (e.g., 0.35) to check for a monotonic trend and confirm 0.25 isn't past the optimum.",
+ "llm_cost_cny": 0.007783,
+ "eval_wall_s": 0.0001442432403564453,
  "tags": [
-  "contrastive_loss",
-  "_edge_timing_weights",
-  "train_gnn_partition",
-  "_refine_partition_by_area",
-  "update_edge_weights"
+  "momentum_decay_factor",
+  "ignore_net_degree",
+  "max_net_weight",
+  "net_weighting_scheme",
+  "TimingOpt.update_net_weights"
  ],
  "max_overflow": null,
- "prompt_chars": 20755
+ "prompt_chars": 21886
 }
