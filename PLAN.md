@@ -1,6 +1,6 @@
 # 赛题 1 总体规划 —— 面向 3D 芯片物理设计的多阶段算法协同演化
 
-> 版本 v0.3 · 2026-11-17 · 状态：**准备阶段；Open3DBench 真实结构已从源码确认；等待官方容器**
+> 版本 v0.4 · 2026-11-17 · 状态：**harness 在真实代码上完成 30 轮彩排；等待官方容器与基准数据**
 > 本文件是项目的"总控文档"：题目理解、策略、harness 设计、环境、目录、里程碑、风险、待确认事项。后续所有改动以此为准并持续更新。
 >
 > 配套文档：**`docs/open3dbench_notes.md`（真实平台结构、评估流程、输入输出契约 —— 先读这个）**、`docs/openroad_reference.md`（六环节 ↔ OpenROAD 命令/参数，§10 勘误表已按源码校正）、`docs/knob_catalog.md`（演化旋钮目录）、`docs/submission_checklist.md`（提交清单）、`workspace/README.md`（怎么跑）。
@@ -115,19 +115,22 @@ end
 final: 导出最佳候选 candidate.patch + results/ + logs/ (父子关系图)
 ```
 
-### 3.3 关键模块
+### 3.3 关键模块（已实现，见 `workspace/harness/`）
 
 | 模块 | 职责 | 备注 |
 |---|---|---|
-| `budget.py` | 本地影子计量：评估次数、token、费用（价格表可配） | 官方计量为准，本地只做提前刹车 |
-| `codebase.py` | 白名单文件索引、函数级分块、按关键字检索片段 | 控制 prompt 长度的核心 |
-| `proposer.py` | 组织提示词，解析 LLM 输出为 SEARCH/REPLACE | 小模型对 unified diff 的格式错误率高，用 SEARCH/REPLACE 更稳 |
-| `gate.py` | 路径白名单、py_compile、pyflakes、禁改检查、冒烟 | 免费、快、拦掉 50% 以上的无效候选 |
-| `evaluator.py` | 适配官方评估接口；mock 模式用于本地开发 | 接口形式待官方容器确认 |
-| `analyzer.py` | 日志→结构化指标→LLM 摘要 | 摘要缓存，避免重复付费 |
-| `selector.py` | 精英集、父代选择、停止条件 | 稳健性指标防过拟合 |
-| `store.py` | git 分支 + `candidates/<id>/meta.json` | 直接产出 logs/ 要求的父子关系 |
-| `llm.py` | DeepSeek 客户端（仅用 `requests`，零重依赖）、重试、用量记录 | 走官方代理只需改 base_url |
+| `budget.py` | 本地影子计量：评估次数、token（含 reasoning）、费用（价格表可配） | 官方计量为准，本地只做提前刹车 |
+| `codebase.py` | 白名单文件索引、类按方法分块、关键字检索 + 命中窗口截取、父代工作副本叠加、`patch_changed_lines` | 控制 prompt 长度的核心；每轮代码片段 ≤ 6k 字符 |
+| `proposer.py` | 组织提示词（system + knowledge + outline / propose + phase guide / fix），解析 SEARCH/REPLACE（宽松版），**precheck** 拒绝未展示代码 | 小模型对 unified diff 格式错误率高，SEARCH/REPLACE 更稳 |
+| `gate.py` | 路径白名单、禁改模式（词边界正则）、py_compile / Tcl 括号 / YAML / JSON / Makefile 语法、pyflakes 或内置未定义名检查（只报新引入）、可选冒烟 | 免费、快；彩排里拦下 9/37 |
+| `evaluator.py` | `MockEvaluator` / `OfficialEvaluator`（JSON 接口）/ `LogDirEvaluator`（原始日志目录，json 优先） | 接口形式待官方容器确认 |
+| `openroad_parse.py` + `profile.py` | wns/tns、关键路径块（跨层判定）、GRT 拥塞表、rsz 统计与进度表、ORFS json、失败探测、ps→ns；问题画像 ≤ 60 行 | 格式按 OpenROAD 源码校正，待真实日志复核 |
+| `analyzer.py` | 规则摘要 + LLM ≤120 词解读（区分"无效"与"假设不成立"） | 摘要缓存，避免重复付费 |
+| `selector.py` | 精英集、稳健性指标（mean−σ）、父代 softmax 采样、血统淘汰、阶段推进、溢出硬门槛、历史摘要 | 稳健性指标防过拟合 |
+| `store.py` | `candidates/<id>/{meta.json, candidate.patch, eval.json, llm/*.json}` + `lineage.jsonl` | 直接产出 logs/ 要求的父子关系 |
+| `llm.py` | DeepSeek 客户端（仅 `requests`）、thinking 开关、重试、record/replay | 走官方代理只需改 base_url（待确认兼容性） |
+| `loop.py` | 六步主循环、probe 关键字轮换、费用自适应、容错、`summary.json`、导出 `algorithms/<task>/candidate.patch` | CLI 读取任务与预算（题面 §七） |
+| `tools/report.py` | 运行目录 → 技术报告 Markdown | 答辩"实验论证"素材 |
 
 ### 3.4 30 次评估的分配（任务一）
 
@@ -300,7 +303,22 @@ F:\huawei_aic_tao\task1\
 - 新增 `docs/open3dbench_notes.md`、`env/05-07_*.bat`（拉镜像 / 克隆 / 本机跑 bp_fe）、`tools/calibrate_pricing.py`
 - 摘录 `third_party/open3dbench_ref/`（15 MB，不入库）
 
+### 2026-11-17 深夜 · 真实代码上的 harness 验证与 30 轮彩排
+- `workspace/baseline/` 用 Open3DBench 真实源码（DREAMPlace fork + GIN 切分 + 流程 Tcl/Makefile）搭成占位基线（不入库）；两份白名单改为真实路径；门禁加 .mk 语法检查
+- `openroad_parse.parse_orfs_metrics`：ORFS 指标 json（`<stage>__timing__setup__ws/wns/tns`，key 名已从 OpenROAD `src/Metrics.tcl` 核实）；`LogDirEvaluator` json 优先、文本兜底，任务一取 `placeopt` 阶段、任务二取 `globalroute`
+- harness 强化：
+  - **precheck**：SEARCH 必须逐字出现在本轮展示过的代码片段里，否则不花评估直接要求修复（模型会凭记忆编造上游 DREAMPlace 的代码，这条把首次通过率从 1/5 提到 5/6）
+  - **父代叠加**：有父代时展示父代工作副本的代码，并把父代 patch 改过的行强制排进展示窗口（否则 combine 阶段 SEARCH 必然对不上基线）
+  - 类按方法分块 + 命中窗口截取；每文件最多 3 块；probe 阶段按旋钮菜单轮换检索焦点
+  - 静态检查只报候选**新引入**的问题（基线自带的 `__file__` 等不背锅）
+  - full_flow 溢出 > 300 不入精英集；历史摘要带 Analyzer 结论、gate_failed 标为"未测试"而非"假设失败"；费用自适应缩放代码片段；CLI `--max-evaluations/--max-cost/--evaluator/--run-dir`；单轮崩溃不中断；`summary.json`
+  - `tools/report.py`：运行目录 → 技术报告用 Markdown（预算、得分曲线、候选表、基线 vs 最优、失败分布、血统树）
+- **30 轮彩排**（真实 deepseek-flash × 真实代码 × mock 评估器，`docs/rehearsal_report_R30_mock.md`）：37 候选 / 28 次评估（+2 保留）/ **0.19 元** / 76 次调用；gate 拦 9、无效 8、有效 20；最优 c024 +0.715（mock 分数无物理意义，但血统树显示 structural→combine 的"组合已验证机制"行为符合设计）。彩排暴露并修掉的问题：基线自带 undefined name 误杀、父代改动区域不在展示窗口、围栏/加粗导致的协议解析失败
+- `third_party/Open3DBench/`（319 MB，不入库）：完整流程代码 + 平台 LEF/LIB + 网表；**基准 DEF/布局输入不在 git**，需从 Place-LoL/README.md 的 Google Drive 链接下载 `binaries.tar.gz`（沙箱不可达，要你本机下）
+- `env/07_run_lol_bpfe.bat` + `tools/collect_m2.py`：一键跑 bp_fe 评估并回收真实日志/json 校正解析器
+
 ### 下一步（按优先级）
-1. 你本机：Docker 磁盘迁 F → `05_pull_open3dbench.bat` → `06_clone` → 下载 Google Drive 的 benchmarks/binaries → `07_run_lol_bpfe.bat`（M2：真实耗时与日志）
-2. 向组委会问 §8 第 2、9 条
-3. 拿到官方容器：填真实白名单，接评估接口，M4 小预算真跑
+1. 你本机：`05_pull_open3dbench.bat` → 下载 `binaries.tar.gz` 解压到 `third_party\Open3DBench\Place-LoL\binaries\` → `07_run_lol_bpfe.bat` → `python tools\collect_m2.py`（M2：真实耗时 + 真实 json key）
+2. 向组委会问 §8 第 2、9 条（"一次时序优化"是 repair_design 还是 repair_timing；Makefile 变量是否可改）
+3. 拿到官方容器：对照 `docs/open3dbench_notes.md` §2 差异表，填真实白名单，接评估接口，M4 小预算真跑
+4. 决赛向：harness 自演化（让智能体改 prompts/ 与 selector 参数，用 mock 评估离线做消融）

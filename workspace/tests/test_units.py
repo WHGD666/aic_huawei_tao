@@ -236,3 +236,27 @@ def test_mock_evaluator_deterministic(tmp_path):
     assert len(r1.runs) == 4 and r1.all_valid
     base = ev.baseline()
     assert all(r.wns < 0 and r.tns < 0 for r in base.runs.values())
+
+
+def test_patch_changed_lines_and_boost():
+    from harness.codebase import patch_changed_lines
+    patch = """diff --git a/x/a.py b/x/a.py
+--- a/x/a.py
++++ b/x/a.py
+@@ -10,4 +10,6 @@ def f():
+     keep
+-    old
++    new1
++    new2
+     keep2
++    new3
+"""
+    cl = patch_changed_lines(patch)
+    assert cl == {"x/a.py": [11, 12, 14]}
+    # boost：命中父代改动行的块必须排第一，且窗口以它为中心
+    cb = Codebase(FAKE, ["partition/**/*.py", "placement/**/*.py"], [])
+    # fake_baseline 的 repair_balance 在 gnn_partition.py 第 ~20 行附近
+    src = (FAKE / "partition/gnn_partition.py").read_text().splitlines()
+    ln = next(i for i, l in enumerate(src, 1) if "def repair_balance" in l) + 1
+    hit = cb.search(["zzz_nomatch"], k=3, boost_lines={"partition/gnn_partition.py": [ln]})
+    assert hit and hit[0].file == "partition/gnn_partition.py" and hit[0].start <= ln <= hit[0].end

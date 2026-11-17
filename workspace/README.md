@@ -26,11 +26,11 @@ workspace/
 │   ├── store.py              候选历史：meta.json / candidate.patch / lineage.jsonl
 │   ├── budget.py             评估次数 + token + 费用的影子计量
 │   └── llm.py                DeepSeek 客户端（仅 requests；支持 record/replay）
-├── baseline/                 官方初始算法（只读拷贝，待获取）
+├── baseline/                 占位基线 = Open3DBench 真实源码摘录（不入库；官方初始算法到手后整体替换，见 baseline/README_BASELINE.md）
 ├── algorithms/{partition_placement,full_flow}/   最终 candidate.patch 输出位置
 ├── logs/run_<task>_<time>/   每次运行：harness.log、budget.json、candidates/、lineage_tree.txt
-├── tools/check_env.py        环境体检；tools/probe_models.py 列模型 + 1 次最小调用
-├── env/0x_*.bat|sh           环境脚本（全部落 F 盘）
+├── tools/                    check_env 体检 / probe_models 模型名 / calibrate_pricing 单价反推 / report 运行报告 / collect_m2 回收真实日志
+├── env/0x_*.bat|sh           环境脚本（全部落 F 盘）：00 setenv / 01 conda / 02 torch / 03 官方容器 / 05 拉 Open3DBench 镜像 / 06 克隆 / 07 跑 bp_fe
 └── tests/                    fake_baseline + FakeLLM + MockEvaluator 的单元/端到端测试
 ```
 
@@ -43,22 +43,26 @@ conda activate F:\huawei_aic_tao\task1\env\conda\tao
 cd /d F:\huawei_aic_tao\task1\workspace
 python tools\check_env.py --net          :: 全绿 + deepseek /models 可达
 python tools\probe_models.py             :: 看模型名，填回 .env 的 DEEPSEEK_MODEL
-python -m pytest tests -q                :: 25 个测试应全部通过
+python -m pytest tests -q                :: 32 个测试应全部通过（无 pytest 时: python tests\_runner_nopytest.py tests.test_units tests.test_parse tests.test_e2e tests.test_logdir_eval）
 ```
 
 ## 跑演化循环
 
 ```bat
-:: mock 评估器 + 真实 LLM（会花钱，先用 --max-rounds 限次）
-run.bat partition_placement --max-rounds 3
+:: mock 评估器 + 真实 LLM（30 轮约 0.2 元）；--run-dir 指定目录可中断后续跑
+run.bat partition_placement --evaluator mock --llm-mode record --run-dir logs\my_run --max-rounds 10
 
-:: 录制一次后可零费用回放调试
-run.bat partition_placement --llm-mode record --max-rounds 3
-run.bat partition_placement --llm-mode replay --max-rounds 3
+:: 录制过的 prompt 可零费用回放
+run.bat partition_placement --llm-mode replay --run-dir logs\my_run
 
-:: 全流程任务
-run.bat full_flow
+:: 官方预算口径（题面：读取指定任务与预算）
+run.bat full_flow --max-evaluations 30 --max-cost 15
+
+:: 运行目录 -> 技术报告 Markdown
+python tools\report.py logs\my_run -o logs\my_run\report.md
 ```
+
+彩排样例：`logs/rehearsal/R30_pp_mock/`（真实 deepseek-flash × 真实 Open3DBench 代码 × mock 评估，28 次评估 0.19 元），报告见 `../docs/rehearsal_report_R30_mock.md`。
 
 Linux / 官方容器内：`./run.sh partition_placement`。
 

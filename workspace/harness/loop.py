@@ -19,7 +19,7 @@ import yaml
 
 from .analyzer import build_analyze_messages, failure_feedback, rule_digest
 from .budget import Budget, Pricing, Usage
-from .codebase import Codebase, apply_edits, git_diff
+from .codebase import Codebase, apply_edits, git_diff, patch_changed_lines
 from .evaluator import EvalResult, Evaluator, MockEvaluator, OfficialEvaluator
 from .gate import Gate
 from .llm import LLMClient, LLMError
@@ -237,8 +237,9 @@ class Harness:
 
         # ① 提出修改
         round_cost = 0.0
+        boost = patch_changed_lines(parent_patch) if parent_patch else None
         msgs = self.proposer.build_messages(phase, self.profile, self.selector.history_digest(), parent_patch, keywords,
-                                            code_chars=self.code_chars)
+                                            code_chars=self.code_chars, boost_lines=boost)
         prompt_chars = sum(len(m["content"]) for m in msgs)
         text, c = self._chat(msgs, self.lcfg["temperature_propose"], self.lcfg["max_tokens_propose"], "propose")
         round_cost += c
@@ -251,7 +252,8 @@ class Harness:
             fb = "\n".join(errs) if errs else rep.text()
             self.log(f"  gate/apply failed -> fix attempt: {fb[:200]}")
             msgs2 = self.proposer.build_messages(phase, self.profile, self.selector.history_digest(), parent_patch, keywords,
-                                                 feedback_for_fix=fb, previous_response=text, code_chars=self.code_chars)
+                                                 feedback_for_fix=fb, previous_response=text, code_chars=self.code_chars,
+                                                 boost_lines=boost)
             text, c = self._chat(msgs2, self.lcfg["temperature_fix"], self.lcfg["max_tokens_fix"], "fix")
             round_cost += c
             prop = parse_proposal(text)

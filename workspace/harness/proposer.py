@@ -126,8 +126,9 @@ class Proposer:
         feedback_for_fix: Optional[str] = None,
         previous_response: Optional[str] = None,
         code_chars: int = 6000,
+        boost_lines: Optional[Dict[str, List[int]]] = None,
     ) -> List[Dict[str, str]]:
-        chunks = self.cb.search(focus_keywords, k=6, max_chars=code_chars)
+        chunks = self.cb.search(focus_keywords, k=6, max_chars=code_chars, boost_lines=boost_lines)
         self.last_chunks = chunks
         code = self.cb.render(chunks) if chunks else "(no matching code chunks; ask for other keywords)"
         if parent_patch and len(parent_patch) > 4000:

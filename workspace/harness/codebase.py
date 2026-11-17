@@ -145,23 +145,34 @@ class Codebase:
 
     # ---------- 检索 ----------
     def search(self, keywords: List[str], k: int = 6, max_chars: int = 6000, max_chunk_chars: int = 2500,
-               max_per_file: int = 3) -> List[Chunk]:
+               max_per_file: int = 3, boost_lines: Optional[Dict[str, List[int]]] = None) -> List[Chunk]:
         """关键字打分（名称命中 ×3），按分数取前 k 块；单块超过 max_chunk_chars 的截断到命中行附近。
-        每个文件最多 max_per_file 块，避免 6 块全来自一个文件、模型看不到别的地方。"""
-        scored: List[Tuple[float, Chunk]] = []
+        每个文件最多 max_per_file 块。boost_lines={file: [行号...]}：覆盖这些行的块（通常是父代 patch 改过的区域）
+        强制排到最前并且窗口以这些行为中心 —— 子代要改父代改过的地方，必须能看到它。"""
+        boost_lines = boost_lines or {}
+        scored: List[Tuple[float, Chunk, bool]] = []
         for c in self.chunks:
             low = c.source.lower()
             s = sum(low.count(kw.lower()) * (3 if kw.lower() in c.name.lower() else 1) for kw in keywords)
-            if s:
-                # 归一化：长块命中多是自然的，略压一下
-                scored.append((s / (1 + len(c.source) / 4000), c))
+            hot = [ln for ln in boost_lines.get(c.file, []) if c.start <= ln <= c.end]
+            if hot:
+                s = s / (1 + len(c.source) / 4000) + 1000 + len(hot)
+                scored.append((s, c, True))
+            elif s:
+                scored.append((s / (1 + len(c.source) / 4000), c, False))
         scored.sort(key=lambda t: -t[0])
         picked, used = [], 0
         per_file: Dict[str, int] = {}
-        for _, c in scored:
-            if per_file.get(c.file, 0) >= max_per_file:
+        for _, c, is_hot in scored:
+            if per_file.get(c.file, 0) >= max_per_file and not is_hot:
                 continue
-            cc = c if len(c.source) <= max_chunk_chars else self._window(c, keywords, max_chunk_chars)
+            if len(c.source) <= max_chunk_chars:
+                cc = c
+            elif is_hot:
+                hot = [ln for ln in boost_lines[c.file] if c.start <= ln <= c.end]
+                cc = self._window(c, keywords, max_chunk_chars, center_line=hot[len(hot) // 2] - c.start)
+            else:
+                cc = self._window(c, keywords, max_chunk_chars)
             if used + len(cc.source) > max_chars:
                 continue
             picked.append(cc)
@@ -172,15 +183,17 @@ class Codebase:
         return picked
 
     @staticmethod
-    def _window(c: Chunk, keywords: List[str], max_chars: int) -> Chunk:
-        """从大块里截取"关键字命中最密集"的连续行窗口，并修正行号。"""
+    def _window(c: Chunk, keywords: List[str], max_chars: int, center_line: Optional[int] = None) -> Chunk:
+        """从大块里截取"关键字命中最密集"的连续行窗口（或以 center_line 为中心），并修正行号。"""
         lines = c.source.splitlines()
-        kws = [k.lower() for k in keywords]
-        hits = [i for i, ln in enumerate(lines) if any(k in ln.lower() for k in kws)]
-        if not hits:
-            hits = [0]
-        # 以命中行中位数为中心向两侧扩
-        center = hits[len(hits) // 2]
+        if center_line is None:
+            kws = [k.lower() for k in keywords]
+            hits = [i for i, ln in enumerate(lines) if any(k in ln.lower() for k in kws)]
+            if not hits:
+                hits = [0]
+            center = hits[len(hits) // 2]
+        else:
+            center = max(0, min(center_line, len(lines) - 1))
         lo = hi = center
         size = len(lines[center]) + 1
         while True:
@@ -255,6 +268,33 @@ def apply_edits(base_root: Path, work_root: Path, edits: List[Edit], fallback_ro
     for f, c in changed.items():
         (work_root / f).write_text(c, encoding="utf-8")
     return changed, errors
+
+
+def patch_changed_lines(patch_text: str) -> Dict[str, List[int]]:
+    """从 unified diff 里抽出每个文件在**新版本**中被改动/新增的行号（用于让子代检索时优先看到父代改过的区域）。"""
+    out: Dict[str, List[int]] = {}
+    cur: Optional[str] = None
+    new_ln = 0
+    for ln in patch_text.splitlines():
+        if ln.startswith("+++ "):
+            cur = ln[4:].strip()
+            cur = cur[2:] if cur.startswith("b/") else cur
+            out.setdefault(cur, [])
+        elif ln.startswith("@@"):
+            m = re.search(r"\+(\d+)(?:,(\d+))?", ln)
+            new_ln = int(m.group(1)) if m else 0
+        elif cur is None or ln.startswith("---"):
+            continue
+        elif ln.startswith("+"):
+            out[cur].append(new_ln)
+            new_ln += 1
+        elif ln.startswith("-"):
+            out[cur].append(new_ln)  # 删除处：标记当前位置，便于窗口覆盖
+        elif ln.startswith("\\"):
+            continue
+        else:
+            new_ln += 1
+    return {k: sorted(set(v)) for k, v in out.items() if v}
 
 
 def git_diff(base_root: Path, work_root: Path, files: List[str]) -> str:
