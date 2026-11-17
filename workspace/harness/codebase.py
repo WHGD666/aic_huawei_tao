@@ -58,13 +58,24 @@ class Chunk:
 
 
 class Codebase:
-    def __init__(self, root: Path, allowed_globs: List[str], denied_globs: List[str] = ()):
+    def __init__(self, root: Path, allowed_globs: List[str], denied_globs: List[str] = (), overlay_root: Optional[Path] = None):
+        """overlay_root：若给定，同名文件优先从这里读（父代工作副本），其余从 root（官方基线）。"""
         self.root = root
+        self.overlay_root = overlay_root
         self.allowed = allowed_globs
         self.denied = list(denied_globs)
         self.files: List[str] = []
         self.chunks: List[Chunk] = []
         self._scan()
+
+    @classmethod
+    def overlay(cls, base: "Codebase", overlay_root: Path) -> "Codebase":
+        return cls(base.root, base.allowed, base.denied, overlay_root=overlay_root)
+
+    def _read_rel(self, rel: str) -> str:
+        if self.overlay_root is not None and (self.overlay_root / rel).exists():
+            return (self.overlay_root / rel).read_text(encoding="utf-8", errors="ignore")
+        return (self.root / rel).read_text(encoding="utf-8", errors="ignore")
 
     # ---------- 索引 ----------
     def _is_allowed(self, rel: str) -> bool:
@@ -73,21 +84,26 @@ class Codebase:
     def _scan(self) -> None:
         if not self.root.exists():
             return
-        for p in sorted(self.root.rglob("*")):
-            if not p.is_file():
+        rels = set()
+        for base in (self.root, self.overlay_root):
+            if base is None or not base.exists():
                 continue
-            rel = str(p.relative_to(self.root)).replace("\\", "/")
-            if not self._is_allowed(rel):
-                continue
+            for p in base.rglob("*"):
+                if p.is_file():
+                    rel = str(p.relative_to(base)).replace("\\", "/")
+                    if rel != "candidate.patch" and self._is_allowed(rel):
+                        rels.add(rel)
+        for rel in sorted(rels):
             self.files.append(rel)
-            if p.suffix == ".py":
-                self.chunks.extend(self._chunk_py(rel, p.read_text(encoding="utf-8", errors="ignore")))
+            src = self._read_rel(rel)
+            if rel.endswith(".py"):
+                self.chunks.extend(self._chunk_py(rel, src))
             else:
-                src = p.read_text(encoding="utf-8", errors="ignore")
                 self.chunks.append(Chunk(rel, "<file>", 1, src.count("\n") + 1, src))
 
     @staticmethod
     def _chunk_py(rel: str, src: str) -> List[Chunk]:
+        """函数级分块；类按方法再切（DREAMPlace 的类动辄上千行，整类塞 prompt 会挤掉其它片段）。"""
         out: List[Chunk] = []
         lines = src.splitlines()
         try:
@@ -95,11 +111,32 @@ class Codebase:
         except SyntaxError:
             return [Chunk(rel, "<module>", 1, len(lines), src)]
         covered = set()
+
+        def add(node, name):
+            s, e = node.lineno, getattr(node, "end_lineno", node.lineno)
+            # 把装饰器行也带上
+            for d in getattr(node, "decorator_list", []):
+                s = min(s, d.lineno)
+            out.append(Chunk(rel, name, s, e, "\n".join(lines[s - 1:e])))
+            covered.update(range(s, e + 1))
+
         for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                s, e = node.lineno, getattr(node, "end_lineno", node.lineno)
-                out.append(Chunk(rel, node.name, s, e, "\n".join(lines[s - 1:e])))
-                covered.update(range(s, e + 1))
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                add(node, node.name)
+            elif isinstance(node, ast.ClassDef):
+                methods = [n for n in node.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
+                if not methods or (getattr(node, "end_lineno", node.lineno) - node.lineno) < 80:
+                    add(node, node.name)
+                    continue
+                # 类头（签名 + 类级属性，到第一个方法之前）
+                first = min(min([m.lineno] + [d.lineno for d in m.decorator_list]) for m in methods)
+                s = node.lineno
+                for d in node.decorator_list:
+                    s = min(s, d.lineno)
+                out.append(Chunk(rel, node.name, s, first - 1, "\n".join(lines[s - 1:first - 1])))
+                covered.update(range(s, first))
+                for m in methods:
+                    add(m, f"{node.name}.{m.name}")
         # 模块级剩余代码（import、常量、配置）作为一块
         rest = [ln for i, ln in enumerate(lines, 1) if i not in covered]
         if any(l.strip() for l in rest):
@@ -107,23 +144,54 @@ class Codebase:
         return out
 
     # ---------- 检索 ----------
-    def search(self, keywords: List[str], k: int = 6, max_chars: int = 6000) -> List[Chunk]:
-        scored: List[Tuple[int, Chunk]] = []
+    def search(self, keywords: List[str], k: int = 6, max_chars: int = 6000, max_chunk_chars: int = 2500,
+               max_per_file: int = 3) -> List[Chunk]:
+        """关键字打分（名称命中 ×3），按分数取前 k 块；单块超过 max_chunk_chars 的截断到命中行附近。
+        每个文件最多 max_per_file 块，避免 6 块全来自一个文件、模型看不到别的地方。"""
+        scored: List[Tuple[float, Chunk]] = []
         for c in self.chunks:
             low = c.source.lower()
             s = sum(low.count(kw.lower()) * (3 if kw.lower() in c.name.lower() else 1) for kw in keywords)
             if s:
-                scored.append((s, c))
+                # 归一化：长块命中多是自然的，略压一下
+                scored.append((s / (1 + len(c.source) / 4000), c))
         scored.sort(key=lambda t: -t[0])
         picked, used = [], 0
+        per_file: Dict[str, int] = {}
         for _, c in scored:
-            if used + len(c.source) > max_chars:
+            if per_file.get(c.file, 0) >= max_per_file:
                 continue
-            picked.append(c)
-            used += len(c.source)
+            cc = c if len(c.source) <= max_chunk_chars else self._window(c, keywords, max_chunk_chars)
+            if used + len(cc.source) > max_chars:
+                continue
+            picked.append(cc)
+            per_file[c.file] = per_file.get(c.file, 0) + 1
+            used += len(cc.source)
             if len(picked) >= k:
                 break
         return picked
+
+    @staticmethod
+    def _window(c: Chunk, keywords: List[str], max_chars: int) -> Chunk:
+        """从大块里截取"关键字命中最密集"的连续行窗口，并修正行号。"""
+        lines = c.source.splitlines()
+        kws = [k.lower() for k in keywords]
+        hits = [i for i, ln in enumerate(lines) if any(k in ln.lower() for k in kws)]
+        if not hits:
+            hits = [0]
+        # 以命中行中位数为中心向两侧扩
+        center = hits[len(hits) // 2]
+        lo = hi = center
+        size = len(lines[center]) + 1
+        while True:
+            grown = False
+            if lo > 0 and size + len(lines[lo - 1]) + 1 <= max_chars:
+                lo -= 1; size += len(lines[lo]) + 1; grown = True
+            if hi < len(lines) - 1 and size + len(lines[hi + 1]) + 1 <= max_chars:
+                hi += 1; size += len(lines[hi]) + 1; grown = True
+            if not grown:
+                break
+        return Chunk(c.file, c.name + " (excerpt)", c.start + lo, c.start + hi, "\n".join(lines[lo:hi + 1]))
 
     def render(self, chunks: List[Chunk]) -> str:
         return "\n\n".join(f"{c.header()}\n```python\n{c.source}\n```" for c in chunks)
@@ -142,7 +210,7 @@ class Codebase:
 
     # ---------- 编辑 ----------
     def read(self, rel: str) -> str:
-        return (self.root / rel).read_text(encoding="utf-8", errors="ignore")
+        return self._read_rel(rel)
 
 
 @dataclass
@@ -152,23 +220,27 @@ class Edit:
     replace: str
 
 
-def apply_edits(base_root: Path, work_root: Path, edits: List[Edit]) -> Tuple[Dict[str, str], List[str]]:
+def apply_edits(base_root: Path, work_root: Path, edits: List[Edit], fallback_root: Optional[Path] = None) -> Tuple[Dict[str, str], List[str]]:
     """
-    从 base_root 复制涉及文件到 work_root（若尚不存在），依次应用 SEARCH/REPLACE。
-    返回 ({relpath: new_content}, errors)。SEARCH 必须唯一精确匹配。
+    依次应用 SEARCH/REPLACE。文件来源优先级：work_root 已有 > base_root > fallback_root（父代工作副本只含父代改过的文件，
+    其它文件要回退到官方基线）。返回 ({relpath: new_content}, errors)。SEARCH 必须唯一精确匹配。
     """
     import shutil
     changed: Dict[str, str] = {}
     errors: List[str] = []
     for e in edits:
-        src = base_root / e.file
         dst = work_root / e.file
-        if not src.exists():
-            errors.append(f"{e.file}: file does not exist in baseline")
-            continue
         if e.file not in changed:
-            dst.parent.mkdir(parents=True, exist_ok=True)
             if not dst.exists():
+                src = None
+                for root in (base_root, fallback_root):
+                    if root is not None and (root / e.file).exists():
+                        src = root / e.file
+                        break
+                if src is None:
+                    errors.append(f"{e.file}: file does not exist in baseline")
+                    continue
+                dst.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(src, dst)
             changed[e.file] = dst.read_text(encoding="utf-8", errors="ignore")
         content = changed[e.file]

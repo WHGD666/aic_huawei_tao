@@ -97,8 +97,10 @@ class MockEvaluator(Evaluator):
                 bias += b
         base = self.baseline().runs
         runs, logs = {}, {}
+        # 失败按"候选"而非按"run"抽样：真实世界里一个改动要么在所有算例上都跑得通，要么系统性地炸（偶发单 run 失败另算小概率）
+        cand_fails = rng.random() < self.fail_rate
         for key, b in base.items():
-            if rng.random() < self.fail_rate:
+            if cand_fails or rng.random() < 0.005:
                 reason = rng.choice(["legalization overlap", "stage timeout", "HBT min-spacing violation", "KeyError in partition"])
                 runs[key] = RunMetrics(b.case, b.seed, 0, 0, valid=False, fail_reason=reason)
                 logs[key] = f"[ERROR] {reason}\nTraceback (most recent call last): ...\n"
@@ -164,17 +166,20 @@ class LogDirEvaluator(Evaluator):
     """
     备用适配器：官方接口若只留下"每个 case/seed 一个目录的原始日志/报告"，用 openroad_parse 直接提取指标。
     约定目录布局（可用 layout 参数改）：
-        <root>/<case>/<seed>/{sta.rpt|*.rpt, repair.log, grt.log, partition.log, flow.log}
+        <root>/<case>/<seed>/{<stage>.json, sta.rpt|*.rpt, repair.log|3_4_place_resized.log, grt.log|5_1_grt.log, partition.log, flow.log}
+    指标优先级：ORFS json（metric_stage 指定阶段，如 placeopt / globalroute）> 文本 report_wns/tns。
     从日志推断 valid / fail_reason；wns/tns 自动按 Liberty 单位换算成 ns。
     """
 
     def __init__(self, cases, seeds, cmd: str, results_root: Path, baseline_root: Optional[Path] = None,
-                 full_flow: bool = False):
+                 full_flow: bool = False, metric_stage: Optional[str] = None):
         super().__init__(cases, seeds)
         self.cmd = cmd
         self.results_root = results_root
         self.baseline_root = baseline_root
         self.full_flow = full_flow
+        # 任务一采样点 = 一次时序优化后（ORFS 阶段名 placeopt）；任务二 = 全局布线后（globalroute）
+        self.metric_stage = metric_stage or ("globalroute" if full_flow else "placeopt")
 
     def baseline(self) -> EvalResult:
         if not self.baseline_root or not self.baseline_root.exists():
@@ -190,7 +195,7 @@ class LogDirEvaluator(Evaluator):
         return res
 
     def _collect(self, cid: str, root: Path) -> EvalResult:
-        from .openroad_parse import detect_time_unit, parse_congestion, parse_stage_status, parse_wns_tns, to_ns
+        from .openroad_parse import detect_time_unit, parse_congestion, parse_orfs_metrics, parse_stage_status, parse_wns_tns, to_ns
         from .profile import build_run_profile
 
         runs, logs, profiles = {}, {}, {}
@@ -203,12 +208,21 @@ class LogDirEvaluator(Evaluator):
                     continue
                 sta = _read_any(d, ["sta.rpt", "timing.rpt", "*.rpt"])
                 flow = _read_any(d, ["flow.log", "*.log"])
-                rep = _read_any(d, ["repair.log", "rsz.log"])
-                grt = _read_any(d, ["grt.log", "route.log"])
+                rep = _read_any(d, ["repair.log", "rsz.log", "3_4_place_resized.log", "4_1_cts.log"])
+                grt = _read_any(d, ["grt.log", "route.log", "5_1_grt.log"])
                 part = _read_any(d, ["partition.log", "partition.txt", "partition.json"])
                 status = parse_stage_status(flow + "\n" + sta)
-                unit = detect_time_unit(sta + "\n" + c)
-                wns, tns = parse_wns_tns(sta)
+                # ---- 指标：json 优先 ----
+                js = _read_any(d, [f"{self.metric_stage}.json", f"*{self.metric_stage}*.json", "metrics.json"])
+                om = parse_orfs_metrics(js, None) if js else None
+                src = "text"
+                if om and om.tns is not None and om.wns_effective is not None:
+                    unit = om.time_unit or detect_time_unit(sta + "\n" + c)
+                    wns, tns = om.wns_effective, om.tns
+                    src = f"json:{om.stage}"
+                else:
+                    unit = detect_time_unit(sta + "\n" + c)
+                    wns, tns = parse_wns_tns(sta)
                 ov = 0.0
                 if self.full_flow:
                     cg = parse_congestion(grt)
@@ -217,8 +231,11 @@ class LogDirEvaluator(Evaluator):
                 reason = status.fail_reason or ("missing wns/tns" if (wns is None or tns is None) else "") or ("missing overflow" if (self.full_flow and ov != ov) else "")
                 runs[key] = RunMetrics(c, s, to_ns(wns, unit) or 0.0, to_ns(tns, unit) or 0.0,
                                        overflow=0.0 if ov != ov else ov, valid=valid, fail_reason=reason)
-                logs[key] = (flow or sta)[-1500:]
-                profiles[key] = build_run_profile(c, s, sta, rep, grt, part).to_dict()
+                logs[key] = f"[metrics from {src}]\n" + (flow or sta)[-1500:]
+                prof = build_run_profile(c, s, sta, rep, grt, part).to_dict()
+                if om:
+                    prof["orfs"] = {k: v for k, v in vars(om).items() if k != "raw"}
+                profiles[key] = prof
         return EvalResult(cid, runs, logs, raw={"profiles": profiles})
 
 

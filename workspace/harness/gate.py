@@ -25,6 +25,32 @@ import yaml
 from .codebase import match_any
 
 
+def _mk_check(src: str) -> str:
+    """极简 Makefile 片段检查：每个非空非注释行要么是变量赋值/export/include/条件，要么是以 Tab 开头的 recipe，要么是续行。
+    主要拦 LLM 把 `export X = 1` 写成 `X: 1` 或丢了续行反斜杠之类的低级错。"""
+    import re as _re
+    assign = _re.compile(r"^(export\s+|unexport\s+|override\s+)?[A-Za-z_][\w.-]*\s*[:?+!]?=")
+    directive = _re.compile(r"^(include|-include|sinclude|ifeq|ifneq|ifdef|ifndef|else|endif|define|endef|\.PHONY|\$\(|export\s+[A-Za-z_]|unexport)")
+    rule = _re.compile(r"^[^\s:=#][^:=#]*:")
+    cont = False
+    for no, line in enumerate(src.splitlines(), 1):
+        s = line.rstrip()
+        if cont:
+            cont = s.endswith("\\")
+            continue
+        if not s.strip() or s.lstrip().startswith("#"):
+            continue
+        if s.startswith("\t"):
+            cont = s.endswith("\\")
+            continue
+        body = s.strip()
+        if assign.match(body) or directive.match(body) or rule.match(body):
+            cont = s.endswith("\\")
+            continue
+        return f"line {no}: not an assignment/directive/rule: {body[:60]}"
+    return ""
+
+
 def _tcl_brace_check(src: str) -> str:
     """极简 Tcl 检查：忽略注释行与 \\{ \\} 转义后，{} 与 [] 必须配平。返回错误描述或空串。"""
     depth_b = depth_s = 0
@@ -58,28 +84,34 @@ def _tcl_brace_check(src: str) -> str:
 
 
 def _undefined_names(src: str):
-    """极简未定义名检查（pyflakes 不可用时的兜底）：模块级 + 函数级作用域，忽略属性/关键字参数。"""
+    """极简未定义名检查（pyflakes 不可用时的兜底）。作用域不精确，所以只报"全模块任何地方都没定义过"的名字。
+    补齐：模块魔法名、推导式/lambda 参数、walrus、match 捕获、类型注解里的字符串、全局 import *。"""
     import ast
     import builtins
     try:
         tree = ast.parse(src)
     except SyntaxError:
         return []
-    defined = set(dir(builtins))
+    defined = set(dir(builtins)) | {"__file__", "__name__", "__doc__", "__package__", "__spec__", "__loader__",
+                                    "__builtins__", "__all__", "__path__", "__annotations__", "__dict__", "__class__"}
+    star_import = False
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             defined.add(node.name)
-            if not isinstance(node, ast.ClassDef):
-                for a in node.args.args + node.args.kwonlyargs + node.args.posonlyargs:
-                    defined.add(a.arg)
-                if node.args.vararg: defined.add(node.args.vararg.arg)
-                if node.args.kwarg: defined.add(node.args.kwarg.arg)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            a = node.args
+            for p in a.args + a.kwonlyargs + a.posonlyargs:
+                defined.add(p.arg)
+            if a.vararg: defined.add(a.vararg.arg)
+            if a.kwarg: defined.add(a.kwarg.arg)
         elif isinstance(node, (ast.Import, ast.ImportFrom)):
             for al in node.names:
+                if al.name == "*":
+                    star_import = True
                 defined.add((al.asname or al.name).split(".")[0])
         elif isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
             defined.add(node.id)
-        elif isinstance(node, (ast.For, ast.comprehension)):
+        elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
             for n in ast.walk(node.target):
                 if isinstance(n, ast.Name): defined.add(n.id)
         elif isinstance(node, ast.ExceptHandler) and node.name:
@@ -89,8 +121,16 @@ def _undefined_names(src: str):
                 if it.optional_vars is not None:
                     for n in ast.walk(it.optional_vars):
                         if isinstance(n, ast.Name): defined.add(n.id)
-        elif isinstance(node, ast.Global):
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
             defined.update(node.names)
+        elif isinstance(node, ast.NamedExpr):
+            defined.add(node.target.id)
+        elif hasattr(ast, "MatchAs") and isinstance(node, getattr(ast, "MatchAs")) and node.name:
+            defined.add(node.name)
+        elif hasattr(ast, "MatchStar") and isinstance(node, getattr(ast, "MatchStar")) and node.name:
+            defined.add(node.name)
+    if star_import:
+        return []  # 无法判断
     out = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id not in defined:
@@ -123,17 +163,19 @@ class Gate:
         self.smoke_cmd = smoke_cmd
 
     # ---------- public ----------
-    def check(self, changed_files: Dict[str, str], patch_text: str, workdir: Optional[Path] = None) -> GateReport:
+    def check(self, changed_files: Dict[str, str], patch_text: str, workdir: Optional[Path] = None,
+              baseline_files: Optional[Dict[str, str]] = None) -> GateReport:
         """
-        changed_files: {relpath: new_full_content}
-        patch_text   : unified diff（用于禁改模式检查，只看 '+' 行）
+        changed_files : {relpath: new_full_content}
+        patch_text    : unified diff（用于禁改模式检查，只看 '+' 行）
+        baseline_files: {relpath: original_content}；给了就只报"候选新引入"的静态问题，不替基线背锅
         """
         rep = GateReport(ok=True)
         self._check_paths(changed_files, rep)
         self._check_forbidden(patch_text, rep)
         self._check_syntax(changed_files, rep)
         if self.run_pyflakes:
-            self._check_pyflakes(changed_files, rep)
+            self._check_pyflakes(changed_files, rep, baseline_files or {})
         if self.smoke_cmd and workdir and rep.ok:
             self._check_smoke(workdir, rep)
         rep.ok = not rep.errors
@@ -187,31 +229,46 @@ class Gate:
                     json.loads(content)
                 except json.JSONDecodeError as e:
                     rep.errors.append(f"json error in {f}: {e}")
+            elif f.endswith(".mk") or f.endswith("Makefile"):
+                err = _mk_check(content)
+                if err:
+                    rep.errors.append(f"makefile syntax in {f}: {err}")
 
-    def _check_pyflakes(self, files: Dict[str, str], rep: GateReport) -> None:
+    def _check_pyflakes(self, files: Dict[str, str], rep: GateReport, baseline: Dict[str, str]) -> None:
+        """静态检查只报候选新引入的问题：基线里本来就有的 undefined name（作用域误报或真实遗留）不算。"""
         try:
             import pyflakes.api  # noqa
             from pyflakes.reporter import Reporter
         except ImportError:
-            # 退化：内置的轻量未定义名检查
-            for f, content in files.items():
-                if f.endswith(".py"):
-                    for name, ln in _undefined_names(content):
-                        rep.errors.append(f"{f}:{ln}: undefined name '{name}' (builtin checker)")
-            return
+            pyflakes = None
+        else:
+            pyflakes = pyflakes.api
         import io
+
+        def issues(name: str, content: str):
+            if pyflakes is None:
+                return {(n, "undefined name") for n, _ in _undefined_names(content)}, set()
+            out, err = io.StringIO(), io.StringIO()
+            pyflakes.check(content, name, Reporter(out, err))
+            hard, soft = set(), set()
+            for line in out.getvalue().splitlines():
+                msg = line.split(":", 2)[-1].strip() if ":" in line else line
+                # 去掉行号，只按"消息"比较，这样基线已有的问题即使移动了行也能对上
+                (hard if "undefined name" in msg else soft).add(msg)
+            return hard, soft
+
         for f, content in files.items():
             if not f.endswith(".py"):
                 continue
-            out, err = io.StringIO(), io.StringIO()
-            n = pyflakes.api.check(content, f, Reporter(out, err))
-            if n:
-                for line in out.getvalue().splitlines():
-                    # 未定义名是硬错误，其余当警告
-                    if "undefined name" in line:
-                        rep.errors.append(line)
-                    else:
-                        rep.warnings.append(line)
+            hard, soft = issues(f, content)
+            if f in baseline:
+                bh, bs = issues(f, baseline[f])
+                hard -= bh
+                soft -= bs
+            for m in sorted(hard):
+                rep.errors.append(f"{f}: {m}")
+            for m in sorted(soft):
+                rep.warnings.append(f"{f}: {m}")
 
     def _check_smoke(self, workdir: Path, rep: GateReport) -> None:
         try:

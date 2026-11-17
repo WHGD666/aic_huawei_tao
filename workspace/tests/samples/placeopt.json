@@ -1,0 +1,12 @@
+{
+  "placeopt__timing__setup__ws": -0.412,
+  "placeopt__timing__setup__wns": -0.412,
+  "placeopt__timing__setup__tns": -133.7,
+  "placeopt__timing__drv__setup_violation_count": 455,
+  "placeopt__timing__drv__max_slew": 3,
+  "placeopt__timing__drv__max_cap": 0,
+  "placeopt__timing__drv__max_fanout": 0,
+  "placeopt__power__total": 0.0123,
+  "placeopt__design__instance__count": 98765,
+  "placeopt__time": "1ns"
+}

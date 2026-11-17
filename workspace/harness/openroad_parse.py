@@ -311,6 +311,93 @@ def parse_stage_status(text: str) -> StageStatus:
 
 
 # ---------------------------------------------------------------------------
+# ORFS 风格指标 json（OpenROAD `-metrics <stage>.json`，src/Metrics.tcl）
+#   key = "<stage>__<metric>"，stage 由 utl::set_metrics_stage 决定（placeopt__{} / cts__{} / globalroute__{} / finish__{}）
+#   timing__setup__ws   worst slack（可正）         timing__setup__wns  worst negative slack（≤0）
+#   timing__setup__tns  total negative slack        timing__drv__setup_violation_count
+#   timing__drv__max_slew / max_cap / max_fanout    power__total        design__instance__area 等
+#   单位跟随 report_units_metric（run__flow__platform 下 "time 1ns" 之类，若有）
+# ---------------------------------------------------------------------------
+import json as _json
+
+
+@dataclass
+class OrfsMetrics:
+    stage: str
+    ws: Optional[float] = None
+    wns: Optional[float] = None
+    tns: Optional[float] = None
+    setup_violation_count: Optional[int] = None
+    max_slew_viol: Optional[int] = None
+    max_cap_viol: Optional[int] = None
+    max_fanout_viol: Optional[int] = None
+    power_total: Optional[float] = None
+    instance_count: Optional[int] = None
+    time_unit: Optional[str] = None
+    raw: Dict[str, object] = field(default_factory=dict)
+
+    @property
+    def wns_effective(self) -> Optional[float]:
+        """评分用的 WNS：优先 wns，否则 min(ws, 0)。"""
+        if self.wns is not None:
+            return self.wns
+        if self.ws is not None:
+            return min(self.ws, 0.0)
+        return None
+
+
+def parse_orfs_metrics(text: str, stage: Optional[str] = None) -> Optional[OrfsMetrics]:
+    """解析 <stage>.json。stage=None 时自动取 json 里出现的第一个 '<stage>__timing__' 前缀。"""
+    try:
+        d = _json.loads(text)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(d, dict) or not d:
+        return None
+    if stage is None:
+        for k in d:
+            if "__timing__" in k:
+                stage = k.split("__timing__")[0]
+                break
+        if stage is None:
+            for k in d:
+                if "__" in k:
+                    stage = k.split("__")[0]
+                    break
+    if stage is None:
+        return None
+    p = stage + "__"
+
+    def g(name, cast=float):
+        v = d.get(p + name)
+        if v is None:
+            return None
+        try:
+            return cast(v)
+        except (ValueError, TypeError):
+            return None
+
+    m = OrfsMetrics(stage=stage, raw=d)
+    m.ws = g("timing__setup__ws")
+    m.wns = g("timing__setup__wns")
+    m.tns = g("timing__setup__tns")
+    m.setup_violation_count = g("timing__drv__setup_violation_count", int)
+    m.max_slew_viol = g("timing__drv__max_slew", int)
+    m.max_cap_viol = g("timing__drv__max_cap", int)
+    m.max_fanout_viol = g("timing__drv__max_fanout", int)
+    m.power_total = g("power__total")
+    m.instance_count = g("design__instance__count", int)
+    # 单位：report_units_metric 写 "<stage>__time" = "1ns" 之类；也兼容顶层 "run__flow__..."
+    for k, v in d.items():
+        if k.endswith("__time") and isinstance(v, str):
+            mm = re.search(r"1\s*(ns|ps)", v)
+            if mm:
+                m.time_unit = mm.group(1)
+                break
+    return m
+
+
+# ---------------------------------------------------------------------------
 # 切分 / HBT 统计（基线的文本输出，格式待定；先按 key: value 兜底）
 # ---------------------------------------------------------------------------
 _RE_KV_INT = re.compile(r"^\s*(?P<k>[A-Za-z_][\w ]*?)\s*[:=]\s*(?P<v>-?\d+(?:\.\d+)?)\s*$", re.M)

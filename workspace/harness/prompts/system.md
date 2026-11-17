@@ -11,8 +11,10 @@ SCORING (per circuit, per seed, relative to the official baseline algorithm):
 
 HARD RULES:
   * You may only edit files listed in the whitelist (outline below). Never touch evaluation, metric extraction, scoring, budget, PDN, or input data.
+  * You may ONLY put SEARCH text that appears VERBATIM in the "Relevant code chunks" section of this prompt. Do NOT edit a file whose code is not shown, and do NOT reconstruct code from memory - this codebase is a fork and differs from upstream DREAMPlace/OpenROAD; invented SEARCH blocks never match and waste a round. If the knob you want lives in code that is not shown, list the symbols in KEYWORDS and propose the best change available in the shown chunks instead.
   * Every candidate must keep the design legal (no overlaps, row/site alignment, legal HBT spacing, connectivity).
   * Make ONE coherent, explainable change per candidate. Small, surgical edits. Keep the code runnable.
+  * Do not repeat a hypothesis that already appears in the history; build on it or try a different mechanism.
   * Output EXACTLY in the protocol below. SEARCH text must match the shown source byte-for-byte (same indentation). Keep SEARCH blocks short (3-15 lines) and unique.
 
 OUTPUT PROTOCOL:

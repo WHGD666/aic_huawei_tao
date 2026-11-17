@@ -99,6 +99,26 @@ def test_kv_numbers():
     assert d == {"cut_nets": 1234.0, "top_area": 0.51, "hbt_count": 980.0}
 
 
+def test_orfs_metrics_json():
+    from harness.openroad_parse import parse_orfs_metrics
+    m = parse_orfs_metrics(_r("placeopt.json"))
+    assert m.stage == "placeopt"
+    assert m.ws == pytest.approx(-0.412) and m.wns == pytest.approx(-0.412) and m.tns == pytest.approx(-133.7)
+    assert m.setup_violation_count == 455 and m.max_slew_viol == 3 and m.instance_count == 98765
+    assert m.time_unit == "ns" and m.wns_effective == pytest.approx(-0.412)
+    # 只有 ws（可正）没有 wns：wns_effective = min(ws, 0)
+    g = parse_orfs_metrics(_r("globalroute.json"))
+    assert g.stage == "globalroute" and g.ws == pytest.approx(0.031) and g.wns is None
+    assert g.wns_effective == 0.0 and g.tns == 0.0
+    # 显式 stage
+    assert parse_orfs_metrics(_r("placeopt.json"), stage="placeopt").tns == pytest.approx(-133.7)
+    assert parse_orfs_metrics(_r("placeopt.json"), stage="cts").tns is None
+    # ps 单位
+    p = parse_orfs_metrics(_r("placeopt_ps.json"))
+    assert p.time_unit == "ps" and to_ns(p.tns, p.time_unit) == pytest.approx(-15.4)
+    assert parse_orfs_metrics("not json") is None and parse_orfs_metrics("{}") is None
+
+
 def test_profile_build_and_render():
     rp = build_run_profile("bp_fe-ng45", 1001, sta_text=_r("sta_ng45.rpt"), repair_text=_r("repair_ng45.log"),
                            grt_text=_r("grt_ng45.log"), partition_text="cut_nets: 1234\nhbt_count: 980")

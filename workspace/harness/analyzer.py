@@ -46,7 +46,7 @@ ANALYZE_PROMPT = """You are analyzing the evaluation of one candidate change to 
 Hypothesis of the change: {hyp}
 Rule-based digest:
 {digest}
-Write <=120 words: (1) did the hypothesis hold? (2) which case/metric moved and plausible mechanism, (3) one concrete next-step suggestion. No preamble."""
+Write <=120 words. If some runs are INVALID (failures listed), first say what kind of failure it is (legality / crash / timeout) and whether it looks systematic (all seeds of a case) or sporadic - an invalid candidate says nothing about the hypothesis itself; suggest how to make the same idea legal. Otherwise: (1) did the hypothesis hold? (2) which case/metric moved and plausible mechanism, (3) one concrete next-step suggestion. No preamble."""
 
 
 def build_analyze_messages(hypothesis: str, digest: str) -> List[Dict[str, str]]:

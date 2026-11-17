@@ -39,6 +39,8 @@ class CandidateMeta:
     llm_cost_cny: float = 0.0
     eval_wall_s: float = 0.0
     tags: List[str] = field(default_factory=list)
+    max_overflow: Optional[float] = None  # full_flow：9 个 run 里最大的溢出（硬门槛用）
+    prompt_chars: int = 0                 # 本轮 propose prompt 字符数（费用自适应用）
 
 
 class CandidateStore:

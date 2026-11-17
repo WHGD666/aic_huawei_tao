@@ -25,6 +25,7 @@ class Selector:
         max_consecutive_failures: int = 2,
         phase_plan: Optional[Dict[str, int]] = None,
         seed: int = 0,
+        overflow_hard_limit: Optional[float] = None,   # full_flow：任一 run 溢出超过即不入精英集
     ):
         self.store = store
         self.elite_size = elite_size
@@ -32,6 +33,7 @@ class Selector:
         self.max_fail = max_consecutive_failures
         self.phase_plan = phase_plan or {"probe": 6, "structural": 14, "combine": 8}
         self.rng = random.Random(seed)
+        self.overflow_hard_limit = overflow_hard_limit
         self._fail_streak: Dict[str, int] = {}
 
     # ---------- 阶段 ----------
@@ -49,6 +51,8 @@ class Selector:
 
     def elites(self) -> List[CandidateMeta]:
         ev = [m for m in self.store.evaluated() if m.all_valid]
+        if self.overflow_hard_limit is not None:
+            ev = [m for m in ev if (m.max_overflow is None or m.max_overflow <= self.overflow_hard_limit)]
         ev.sort(key=self.robust_value, reverse=True)
         return ev[: self.elite_size]
 
@@ -98,12 +102,27 @@ class Selector:
             self._fail_streak[child.parent] = self._fail_streak.get(child.parent, 0) + 1
 
     # ---------- 摘要（给 Proposer 的历史上下文，控制长度） ----------
-    def history_digest(self, max_items: int = 8) -> str:
-        items = sorted(self.store.all(), key=lambda m: m.created_at)[-max_items:]
+    def history_digest(self, max_items: int = 8, with_analysis: bool = True) -> str:
+        """最近 max_items 个候选 + 当前精英（若不在最近里）。每条带一句 Analyzer 结论，让模型知道'为什么'。"""
+        recent = sorted(self.store.all(), key=lambda m: m.created_at)[-max_items:]
+        ids = {m.id for m in recent}
+        items = list(recent)
+        for e in self.elites()[:2]:
+            if e.id not in ids:
+                items.insert(0, e)
         lines = []
         for m in items:
             s = f"{m.score_total:+.3f}" if m.score_total is not None else "n/a"
             robust = f"{m.score_robust:+.3f}" if m.score_robust is not None else "n/a"
-            fr = f" FAIL:{'; '.join(m.fail_reasons)[:80]}" if m.fail_reasons else ""
-            lines.append(f"- {m.id} (parent={m.parent or 'base'}, {m.phase}) [{m.status}] score={s} robust={robust}: {m.hypothesis[:90]}{fr}")
+            if m.status == "gate_failed":
+                # 门禁失败是 harness/格式层面的事，不要让模型以为"这个假设不行"
+                fr = " (not evaluated: local check failed; the idea itself is untested)"
+            else:
+                fr = f" FAIL:{'; '.join(m.fail_reasons)[:80]}" if m.fail_reasons else ""
+            pc = ""
+            if m.per_case:
+                pc = " [" + " ".join(f"{k.split('-')[0]}:{v:+.2f}" for k, v in m.per_case.items()) + "]"
+            lines.append(f"- {m.id} (parent={m.parent or 'base'}, {m.phase}) [{m.status}] score={s} robust={robust}{pc}: {m.hypothesis[:100]}{fr}")
+            if with_analysis and m.analysis and m.status != "gate_failed":
+                lines.append(f"    analysis: {m.analysis[:220]}")
         return "\n".join(lines) if lines else "(no history yet)"

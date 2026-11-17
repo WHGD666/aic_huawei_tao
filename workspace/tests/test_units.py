@@ -18,7 +18,7 @@ from harness.selector import Selector  # noqa: E402
 from tests.fake_llm import BAD_SEARCH, GOOD_PROPOSAL, TOUCH_EVAL  # noqa: E402
 
 FAKE = WS / "tests" / "fake_baseline"
-WL = WS / "config" / "whitelist_partition_placement.yaml"
+WL = WS / "tests" / "whitelist_fake.yaml"
 
 
 # ---------------- scoring ----------------
@@ -87,6 +87,34 @@ def test_codebase_index_and_search():
     assert "gnn_partition.py" in cb.outline()
 
 
+def test_codebase_real_baseline_chunking():
+    """真实 Open3DBench 代码：大类按方法切、超大块按命中窗口截取、检索命中正确符号。"""
+    import yaml
+    base = WS / "baseline"
+    if not (base / "Place-LoL" / "dreamplace" / "PlaceObj.py").exists():
+        return  # baseline 未就绪时跳过
+    wl = yaml.safe_load(open(WS / "config" / "whitelist_partition_placement.yaml", encoding="utf-8"))
+    cb = Codebase(base, wl["allowed"], wl["denied"])
+    assert "Place-LoL/dreamplace/PlaceObj.py" in cb.files
+    assert "Place-LoL/dreamplace/PlaceDB.py" not in cb.files          # denied
+    names = {c.name for c in cb.chunks}
+    assert "PlaceObj.build_update_density_weight" in names             # 类方法级分块
+    assert "TimingOpt.update_net_weights" in names
+    hit = cb.search(["net_weight", "timing", "criticality"], k=6)
+    assert any(c.name == "TimingOpt.update_net_weights" for c in hit)
+    assert all(len(c.source) <= 2500 for c in hit)                     # 窗口截取生效
+    assert sum(len(c.source) for c in hit) <= 6000
+    exc = [c for c in hit if c.name.endswith("(excerpt)")]
+    if exc:
+        assert exc[0].start >= 1 and exc[0].end >= exc[0].start
+
+
+def test_gate_mk_check():
+    from harness.gate import _mk_check
+    assert _mk_check("export A = 1\nB ?= x \\\n  y\n# c\n\ttab recipe\nifeq ($(A),1)\nendif\n") == ""
+    assert "line 2" in _mk_check("export A = 1\nthis is junk\n")
+
+
 def test_apply_edits_and_diff(tmp_path):
     work = tmp_path / "w"
     changed, errs = apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "TIMING_WEIGHT = 0.0", "TIMING_WEIGHT = 0.5")])
@@ -118,6 +146,25 @@ def test_parse_proposal():
     assert p.edits[0].search == "TIMING_WEIGHT = 0.0"
     bad = parse_proposal("random text")
     assert bad.parse_errors
+    # 宽松解析：围栏包住、漏第二个 >>>、=== 带尾随空格、**HYPOTHESIS**: 加粗、file= 带反引号
+    lenient = """**HYPOTHESIS**: x
+EXPECTED: y
+KEYWORDS: `a`, b
+```text
+<<<EDIT file=`partition/gnn_partition.py`
+<<<SEARCH
+TIMING_WEIGHT = 0.0
+===
+TIMING_WEIGHT = 0.9
+>>>
+```
+"""
+    q = parse_proposal(lenient)
+    assert not q.parse_errors, q.parse_errors
+    assert q.hypothesis == "x" and q.keywords == ["a", "b"]
+    assert q.edits[0].file == "partition/gnn_partition.py" and q.edits[0].replace == "TIMING_WEIGHT = 0.9"
+    malformed = parse_proposal("HYPOTHESIS: h\n<<<EDIT file=a.py\nno search marker\n>>>")
+    assert any("malformed" in e for e in malformed.parse_errors)
 
 
 # ---------------- gate ----------------
@@ -141,7 +188,7 @@ def test_gate_blocks_denied_and_syntax(tmp_path):
     assert rep3b.ok and not rep3b.warnings
 
     # Tcl / yaml / json 的语法门禁（full_flow 白名单含 tcl）
-    g2 = Gate(WS / "config" / "whitelist_full_flow.yaml", [], run_pyflakes=False)
+    g2 = Gate(WL, [], run_pyflakes=False)
     bad_tcl = g2.check({"cts/cts.tcl": "proc f {} {\n  if {1} {\n    puts hi\n  \n}\n"}, "")
     assert not bad_tcl.ok and any("tcl" in e for e in bad_tcl.errors)
     ok_tcl = g2.check({"cts/cts.tcl": "# comment with {\nproc f {} {\n  set x [expr {1 + 2}]\n  puts \"\\{\"\n}\n"}, "")

@@ -52,3 +52,27 @@ def test_logdir_task1_no_overflow_needed(tmp_path):
     ev = LogDirEvaluator(["bp-ng45"], [1001], cmd="true", results_root=tmp_path / "res", baseline_root=base, full_flow=False)
     r = ev.baseline()
     assert r.runs["bp-ng45/1001"].valid and r.runs["bp-ng45/1001"].overflow == 0.0
+    assert "[metrics from text]" in r.stage_logs["bp-ng45/1001"]
+
+
+def test_logdir_json_preferred_over_text(tmp_path):
+    """同目录有 placeopt.json 时以 json 为准（文本里 wns=-0.35，json 里 -0.412）。"""
+    base = tmp_path / "base"
+    _mk(base, "bp_fe-ng45", 1001, grt=None)
+    shutil.copy(S / "placeopt.json", base / "bp_fe-ng45" / "1001" / "placeopt.json")
+    ev = LogDirEvaluator(["bp_fe-ng45"], [1001], cmd="true", results_root=tmp_path / "res", baseline_root=base, full_flow=False)
+    r = ev.baseline()
+    run = r.runs["bp_fe-ng45/1001"]
+    assert run.valid and run.wns == pytest.approx(-0.412) and run.tns == pytest.approx(-133.7)
+    assert "[metrics from json:placeopt]" in r.stage_logs["bp_fe-ng45/1001"]
+    assert r.raw["profiles"]["bp_fe-ng45/1001"]["orfs"]["setup_violation_count"] == 455
+    # full_flow 取 globalroute.json；ws 为正 -> wns 0
+    shutil.copy(S / "globalroute.json", base / "bp_fe-ng45" / "1001" / "globalroute.json")
+    shutil.copy(S / "grt_ng45.log", base / "bp_fe-ng45" / "1001" / "grt.log")
+    ev2 = LogDirEvaluator(["bp_fe-ng45"], [1001], cmd="true", results_root=tmp_path / "res", baseline_root=base, full_flow=True)
+    r2 = ev2.baseline().runs["bp_fe-ng45/1001"]
+    assert r2.valid and r2.wns == 0.0 and r2.tns == 0.0 and r2.overflow == 220
+    # ps json -> ns
+    shutil.copy(S / "placeopt_ps.json", base / "bp_fe-ng45" / "1001" / "placeopt.json")
+    r3 = ev.baseline().runs["bp_fe-ng45/1001"]
+    assert r3.tns == pytest.approx(-15.4)

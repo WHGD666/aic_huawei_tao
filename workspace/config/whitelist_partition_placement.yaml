@@ -1,21 +1,47 @@
-# 任务一允许修改的文件白名单（相对 baseline/ 根目录）
-# 具体路径要等拿到官方基线后填写。gitignore 风格 glob：** 跨目录，* 不跨目录。
+# 任务一白名单（相对 baseline/ 根，目录结构按 Open3DBench v1.1；官方容器到手后核对路径）
+# 切分 + 布局：DREAMPlace fork（Place-LoL）+ GNN 切分（Place-MoL/src/partition）
 allowed:
-  - "partition/**/*.py"
-  - "placement/**/*.py"
-  - "partition/**/*.yaml"
-  - "placement/**/*.yaml"
-  - "partition/**/*.json"
-  - "placement/**/*.json"
-  - "config/partition*.yaml"
-  - "config/place*.yaml"
-  - "config/partition*.json"
-  - "config/place*.json"
-# 即使在 allowed 内也禁止动的
+  # 切分
+  - "Place-LoL/dreamplace/Partitioner.py"
+  - "Place-MoL/src/partition/**/*.py"
+  - "Place-MoL/config/*.json"
+  # 解析布局：目标函数 / 优化循环 / 网权重 / 密度 / 合法化调用
+  - "Place-LoL/dreamplace/NonLinearPlace.py"
+  - "Place-LoL/dreamplace/PlaceObj.py"
+  - "Place-LoL/dreamplace/BasicPlace.py"
+  - "Place-LoL/dreamplace/NesterovAcceleratedGradientOptimizer.py"
+  - "Place-LoL/dreamplace/ops/timing/timing.py"
+  # 布局参数（每算例一份；候选若改参数必须对所有算例一致地改，禁止按算例名特判）
+  - "Place-LoL/test/3D_input_default/*.json"
+  # 布局输出转 DEF（HBT 插入 / 层后缀）—— 影响合法性，谨慎
+  - "Place-LoL/dreamplace/convert_common.py"
+  # 评估流程里"布局与合法化"一侧的合法化脚本
+  - "OpenROAD-3D/flow/scripts_3D/lg_bottom.tcl"
+  - "OpenROAD-3D/flow/scripts_3D/lg_upper.tcl"
 denied:
-  - "**/evaluate*"
-  - "**/metric*"
-  - "**/score*"
-  - "**/budget*"
-  - "**/pdn*"
-  - "**/sta*"
+  # 评估 / 指标 / 计分 / 数据库读取
+  - "**/get_metrics*.py"
+  - "**/EvalMetrics.py"
+  - "**/report_metrics.tcl"
+  - "**/final_report.tcl"
+  - "**/PlaceDB.py"
+  - "**/Params.py"
+  - "**/params.json"
+  - "**/convert_input.py"
+  - "**/convert_output.py"
+  - "**/read_def*.py"
+  - "**/save_map*.py"
+  - "**/split_cts_def*.py"
+  # 任务一固定环节：PDN / 时序优化 / STA
+  - "**/pdn.tcl"
+  - "**/resize.tcl"
+  - "**/cts.tcl"
+  - "**/global_route.tcl"
+  - "**/Makefile"
+  - "**/config.mk"
+  - "**/config_lol.mk"
+  - "**/*.sdc"
+  - "**/*.lef"
+  - "**/*.lib"
+  - "**/*.def"
+  - "**/*.v"

@@ -26,9 +26,23 @@ from .codebase import Codebase, Edit
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 EDIT_RE = re.compile(
-    r"<<<EDIT\s+file=(?P<file>[^\n]+?)\s*\n<<<SEARCH\n(?P<search>.*?)\n===\n(?P<replace>.*?)\n>>>\s*\n>>>",
+    r"<<<EDIT\s+file=(?P<file>[^\n]+?)\s*\n<<<SEARCH\s*\n(?P<search>.*?)\n===+\s*\n(?P<replace>.*?)\n>>>\s*(?:\n>>>)?",
     re.DOTALL,
 )
+# 宽松版：模型常见错误 —— 用 ``` 包住、漏掉第二个 >>>、=== 后带空格、file= 带引号/反引号
+_FENCE_RE = re.compile(r"```[a-zA-Z]*\s*\n(.*?)\n```", re.DOTALL)
+
+
+def _strip_fences(text: str) -> str:
+    """若整段 EDIT 协议被塞进 ``` 代码块里，把围栏去掉（保留内部内容）。"""
+    if "<<<EDIT" not in text:
+        return text
+    out = text
+    for m in _FENCE_RE.finditer(text):
+        inner = m.group(1)
+        if "<<<EDIT" in inner or "<<<SEARCH" in inner:
+            out = out.replace(m.group(0), inner)
+    return out
 
 
 @dataclass
@@ -42,19 +56,24 @@ class Proposal:
 
 
 def parse_proposal(text: str) -> Proposal:
+    text = _strip_fences(text)
+
     def grab(tag: str) -> str:
-        m = re.search(rf"^{tag}:\s*(.+)$", text, re.MULTILINE)
-        return m.group(1).strip() if m else ""
+        m = re.search(rf"^\**{tag}\**\s*[:：]\s*(.+)$", text, re.MULTILINE)
+        return m.group(1).strip().strip("*") if m else ""
 
     hyp = grab("HYPOTHESIS")
     exp = grab("EXPECTED")
-    kws = [k.strip() for k in grab("KEYWORDS").split(",") if k.strip()]
+    kws = [k.strip().strip("`") for k in grab("KEYWORDS").split(",") if k.strip()]
     edits, errs = [], []
     for m in EDIT_RE.finditer(text):
         f = m.group("file").strip().strip("`'\"")
         edits.append(Edit(f, m.group("search"), m.group("replace")))
     if not edits:
-        errs.append("no EDIT blocks parsed")
+        hint = ""
+        if "<<<EDIT" in text or "<<<SEARCH" in text:
+            hint = " (EDIT markers present but malformed: check 'file=' header line, a '<<<SEARCH' line, a '===' separator line, and a closing '>>>' line)"
+        errs.append("no EDIT blocks parsed" + hint)
     if not hyp:
         errs.append("missing HYPOTHESIS")
     return Proposal(hyp, exp, kws, edits, text, errs)
@@ -68,12 +87,34 @@ class Proposer:
     def __init__(self, codebase: Codebase, task: str):
         self.cb = codebase
         self.task = task
+        self.last_chunks = []
         self.system = (
             _load("system.md")
             .replace("{TASK}", task)
             .replace("{KNOWLEDGE}", _load("knowledge.md") if (PROMPTS_DIR / "knowledge.md").exists() else "")
             .replace("{OUTLINE}", codebase.outline())
         )
+
+    def precheck(self, prop: Proposal) -> List[str]:
+        """免费的本地预检：SEARCH 必须出现在本轮展示过的代码片段里（否则多半是模型凭记忆编的）。"""
+        errs = []
+        shown = {c.file: c.source for c in self.last_chunks}
+        by_file: Dict[str, str] = {}
+        for c in self.last_chunks:
+            by_file[c.file] = by_file.get(c.file, "") + "\n" + c.source
+        for e in prop.edits:
+            if e.file not in by_file:
+                errs.append(f"{e.file}: this file was NOT shown in the code chunks; you may only edit shown code. Shown files: {sorted(by_file)}")
+            elif e.search not in by_file[e.file]:
+                # 给一点线索：找相似的首行
+                first = e.search.strip().splitlines()[0].strip() if e.search.strip() else ""
+                hint = ""
+                for ln in by_file[e.file].splitlines():
+                    if first and first[:30] in ln:
+                        hint = f" Closest shown line: {ln.strip()[:100]!r}"
+                        break
+                errs.append(f"{e.file}: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).{hint}")
+        return errs
 
     def build_messages(
         self,
@@ -84,9 +125,13 @@ class Proposer:
         focus_keywords: List[str],
         feedback_for_fix: Optional[str] = None,
         previous_response: Optional[str] = None,
+        code_chars: int = 6000,
     ) -> List[Dict[str, str]]:
-        chunks = self.cb.search(focus_keywords, k=6)
+        chunks = self.cb.search(focus_keywords, k=6, max_chars=code_chars)
+        self.last_chunks = chunks
         code = self.cb.render(chunks) if chunks else "(no matching code chunks; ask for other keywords)"
+        if parent_patch and len(parent_patch) > 4000:
+            parent_patch = parent_patch[:4000] + "\n... (patch truncated; full patch applied in working copy)"
         user = (
             _load("propose.md")
             .replace("{PHASE}", phase)

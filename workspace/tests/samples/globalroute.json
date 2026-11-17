@@ -1,0 +1,6 @@
+{
+  "globalroute__timing__setup__ws": 0.031,
+  "globalroute__timing__setup__tns": 0.0,
+  "globalroute__route__wirelength__estimated": 1234567,
+  "globalroute__design__instance__count": 98800
+}

@@ -44,6 +44,19 @@ NET_WEIGHT_DEFAULT = 2.0
 >>>
 """
 
+# 建立在 GOOD_PROPOSAL 之上的第二步：同一文件、另一旋钮（structural 阶段用；KEYWORDS 与 GOOD 一致以便检索同一文件）
+CHILD_PROPOSAL = """HYPOTHESIS: Relax area balance tolerance so the critical-weighted partition is less constrained.
+EXPECTED: TNS down slightly on all cases.
+KEYWORDS: timing, slack, partition, net_weights
+<<<EDIT file=partition/gnn_partition.py
+<<<SEARCH
+AREA_BALANCE_TOL = 0.05
+===
+AREA_BALANCE_TOL = 0.08
+>>>
+>>>
+"""
+
 TOUCH_EVAL = """HYPOTHESIS: cheat
 EXPECTED: n/a
 KEYWORDS: x
