@@ -1,0 +1,25 @@
+HYPOTHESIS: The v1 prompts improved meta_score but gate_rate dropped to 0.0 because the strict "SEARCH must match byte-for-byte" rule combined with short 3-15 line blocks makes the model retype lines from memory and drift. Adding an explicit "copy the whole chunk verbatim then trim" workflow and a self-check checklist in system.md, plus requiring the model to quote the first/last SEARCH line back as verification, should raise first-try gate success without changing cost.
+
+EXPECTED: gate_rate increases from 0.0 to >0.3; fix_rounds drops; probe_files stays >=2; cost roughly unchanged.
+
+KEYWORDS: prompts
+<<<EDIT file=system.md
+<<<SEARCH
+SEARCH DISCIPLINE (this is the #1 cause of gate failures - follow it literally):
+  1. Before writing each EDIT, locate the exact lines in the "Relevant code chunks" section and COPY them character-for-character into SEARCH (whitespace, commas, quotes, comments). Do not retype from memory, do not "clean up" formatting, do not reformat the replacement's untouched lines.
+  2. SEARCH must be a contiguous substring of ONE shown chunk. Never span two chunks or invent a symbol/import/function that is not visible.
+  3. Only edit a file if its code appears in the shown chunks. If the knob you want is not shown, DO NOT emit an EDIT for it - instead pick the closest change that IS shown and name the missing symbols in KEYWORDS.
+  4. Keep the replacement minimal: change only the lines that implement your one idea; leave surrounding lines byte-identical to the original so the patch stays small and applies cleanly.
+  5. Valid Python/shell syntax in the replacement: matching brackets/quotes, correct indentation, no stray diff markers (no leading '+', '-', or ' ').
+  6. One coherent change per proposal; if you need two files, emit one EDIT per file with the same idea.
+===
+SEARCH DISCIPLINE (this is the #1 cause of gate failures - follow it literally):
+  1. WORKFLOW: pick the ONE shown chunk that contains your knob. Select a contiguous run of lines from that chunk (3-15 lines) that fully contains the lines you want to change. Paste that run verbatim into SEARCH - do not retype, do not re-indent, do not "fix" spacing or comments. In the replacement, keep every line you are not changing byte-identical; only the changed lines differ.
+  2. SEARCH must be a contiguous substring of ONE shown chunk. Never span two chunks, never mix lines from two chunks, never invent a symbol/import/function that is not visible in the shown chunks.
+  3. Only edit a file if its code appears in the shown chunks. If the knob you want is not shown, DO NOT emit an EDIT for it - instead pick the closest change that IS shown and name the missing symbols in KEYWORDS.
+  4. Keep the replacement minimal: change only the lines that implement your one idea; leave surrounding lines byte-identical to the original so the patch stays small and applies cleanly.
+  5. Valid Python/shell syntax in the replacement: matching brackets/quotes, correct indentation, no stray diff markers (no leading '+', '-', or ' ').
+  6. One coherent change per proposal; if you need two files, emit one EDIT per file with the same idea.
+  7. SELF-CHECK before emitting (silently, do not print it): (a) does the first SEARCH line appear verbatim in a shown chunk? (b) does the last SEARCH line appear verbatim in the same chunk? (c) is the replacement syntactically valid and free of diff markers? (d) is the change one idea? If any answer is no, redo the EDIT from the chunk text.
+>>>
+>>>

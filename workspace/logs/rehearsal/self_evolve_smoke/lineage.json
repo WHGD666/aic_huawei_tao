@@ -1,0 +1,59 @@
+[
+ {
+  "version": "v0",
+  "parent": null,
+  "hypothesis": "(original prompts)",
+  "metrics": {
+   "rounds": 8,
+   "gate_rate": 0.375,
+   "valid": 3,
+   "evals": 5,
+   "probe_files": 2,
+   "fix_rounds": 4,
+   "cost": 0.04293980000000001,
+   "best_robust": 0.11763997646951006
+  },
+  "meta_score": 0.13912039999999998,
+  "kept": true
+ },
+ {
+  "version": "v1",
+  "parent": "v0",
+  "hypothesis": "The gate_rate is only 0.375 and `fix_rounds` is high (4), meaning SEARCH blocks frequently fail to match the shown code. The biggest lever is to make the model copy SEARCH text verbatim from `{CODE}` and, when a knob isn't shown, to refuse to invent it. I'll tighten system.md's HARD RULES into a short, explicit \"SEARCH discipline\" checklist placed right before OUTPUT PROTOCOL, and add a rule that if the desired knob's code is not in `{CODE}`, the model must pick a shown chunk instead. This should reduce non-matching SEARCH blocks and thus raise first-try gate_rate and lower fix_rounds.",
+  "files": [
+   "system.md"
+  ],
+  "metrics": {
+   "rounds": 5,
+   "gate_rate": 0.0,
+   "valid": 5,
+   "evals": 5,
+   "probe_files": 2,
+   "fix_rounds": 0,
+   "cost": 0.024173,
+   "best_robust": 0.21032875580723642
+  },
+  "meta_score": 1.201654,
+  "kept": true
+ },
+ {
+  "version": "v2",
+  "parent": "v1",
+  "hypothesis": "The v1 prompts improved meta_score but gate_rate dropped to 0.0 because the strict \"SEARCH must match byte-for-byte\" rule combined with short 3-15 line blocks makes the model retype lines from memory and drift. Adding an explicit \"copy the whole chunk verbatim then trim\" workflow and a self-check checklist in system.md, plus requiring the model to quote the first/last SEARCH line back as verification, should raise first-try gate success without changing cost.",
+  "files": [
+   "system.md"
+  ],
+  "metrics": {
+   "rounds": 5,
+   "gate_rate": 0.0,
+   "valid": 4,
+   "evals": 5,
+   "probe_files": 2,
+   "fix_rounds": 0,
+   "cost": 0.0219522,
+   "best_robust": 0.2642187999011377
+  },
+  "meta_score": 1.0060956,
+  "kept": false
+ }
+]

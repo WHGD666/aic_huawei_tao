@@ -1,0 +1,11 @@
+20a21,28
+> SEARCH DISCIPLINE (this is the #1 cause of gate failures - follow it literally):
+>   1. Before writing each EDIT, locate the exact lines in the "Relevant code chunks" section and COPY them character-for-character into SEARCH (whitespace, commas, quotes, comments). Do not retype from memory, do not "clean up" formatting, do not reformat the replacement's untouched lines.
+>   2. SEARCH must be a contiguous substring of ONE shown chunk. Never span two chunks or invent a symbol/import/function that is not visible.
+>   3. Only edit a file if its code appears in the shown chunks. If the knob you want is not shown, DO NOT emit an EDIT for it - instead pick the closest change that IS shown and name the missing symbols in KEYWORDS.
+>   4. Keep the replacement minimal: change only the lines that implement your one idea; leave surrounding lines byte-identical to the original so the patch stays small and applies cleanly.
+>   5. Valid Python/shell syntax in the replacement: matching brackets/quotes, correct indentation, no stray diff markers (no leading '+', '-', or ' ').
+>   6. One coherent change per proposal; if you need two files, emit one EDIT per file with the same idea.
+> 
+21a30
+> ===

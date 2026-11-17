@@ -104,7 +104,9 @@ final: 导出最优 candidate.patch（可 git apply 到官方基线）+ SELECTED
 
 彩排（真实 LLM × 真实 Open3DBench 代码 × mock 评估器，仅验证 harness 行为）：31 轮 / 30 次评估全部用满 / 1 次门禁拦截 / 6 次无效 / 0.17 元；血统树显示 probe→structural→combine→final 的推进与"组合已验证机制"的行为。修复审核清单前的同配置彩排为 37 轮 / 28 次评估 / 9 次门禁拦截——**precheck + 父代改动区域进展示窗口** 把门禁失败从 24% 降到 3%。
 
-### 3.4 消融 `【待官方运行；可先用 mock 做行为消融】`
+### 3.4 消融 `【待官方运行；行为维度已用 mock 做冒烟】`
+
+工具：`tools/ablate.py`（`config.ablation` 七个开关逐个关闭，比较门禁失败率 / 有效评估数 / 探针覆盖 / 修复轮 / 费用）。6 评估冒烟结果见 `workspace/logs/rehearsal/ablation_smoke/ablation_table.md`；正式消融需 ≥3 个种子重复，待官方评估接口后补分数维度。
 
 | 部件 | 关闭后预期影响 | 结果 |
 |---|---|---|
@@ -115,6 +117,11 @@ final: 导出最优 candidate.patch（可 git apply 到官方基线）+ SELECTED
 | 旋钮菜单轮换 vs 自由检索 | 探针覆盖面（6 次探针是否看了 6 个区域） | |
 | Analyzer LLM 解读入史 | structural 阶段假设质量 | |
 
+### 3.4b harness 自演化（提示词层）原型
+
+`tools/self_evolve.py`：外层让基座模型修改 `harness/prompts/*.md`（白名单只含提示词，占位符必须保留），每个版本用内层 harness（真实 LLM × mock 评估器、固定种子、5–6 次评估）跑一次，以**行为元目标**（有效评估占比 + 探针覆盖 − 门禁失败率 − 修复轮占比 − 费用；mock 分数不进目标，避免把提示词调成迎合 mock）选择版本。
+2 代冒烟（`workspace/logs/rehearsal/self_evolve_smoke/`）：v0 原始提示词 gate_rate 0.375 / fix_rounds 4；外层模型诊断出"SEARCH 与展示代码不匹配是门禁失败主因"，在 system.md 加入 6 条 "SEARCH DISCIPLINE" 检查表（v1），内层 gate_rate → 0、fix_rounds → 0、费用 −44%；v2 的改动（要求回显 SEARCH 首尾行）未超过 v1，被拒绝。提交版 harness 将使用人工审阅后的 v1 提示词（见 `v0_to_v1.diff`）。
+
 ### 3.5 创新点（区分已有方法与团队贡献）
 
 | 已有方法 | 本方案的贡献 |
@@ -124,6 +131,7 @@ final: 导出最优 candidate.patch（可 git apply 到官方基线）+ SELECTED
 | 静态检查 | 只报候选新引入的问题；Tcl/Makefile/YAML/JSON 形式检查；**算例名 / PDK 分支门禁** 与 **per_design 一致性** 把题面"不得特判"变成可执行规则 |
 | 进化选择 | 稳健分 mean−σ、溢出硬门槛、血统淘汰只计真实评估、hunk 指纹去重 |
 | 日志 | 候选在拿到 id 的瞬间落盘；`summary.json` 记录 harness commit 与基线白名单文件哈希 |
+| Darwin Gödel Machine 的自改代码 | 受限的**提示词层自演化**：元目标用行为指标而非（无物理意义的）mock 分数，占位符守卫，版本血统可审计 |
 
 ---
 

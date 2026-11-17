@@ -1,0 +1,25 @@
+HYPOTHESIS: The gate_rate is only 0.375 and `fix_rounds` is high (4), meaning SEARCH blocks frequently fail to match the shown code. The biggest lever is to make the model copy SEARCH text verbatim from `{CODE}` and, when a knob isn't shown, to refuse to invent it. I'll tighten system.md's HARD RULES into a short, explicit "SEARCH discipline" checklist placed right before OUTPUT PROTOCOL, and add a rule that if the desired knob's code is not in `{CODE}`, the model must pick a shown chunk instead. This should reduce non-matching SEARCH blocks and thus raise first-try gate_rate and lower fix_rounds.
+
+EXPECTED: gate_rate ↑ (fewer SEARCH-match failures), fix_rounds ↓, valid ↑, cost roughly flat or slightly lower (fewer wasted fix rounds).
+
+KEYWORDS: prompts
+<<<EDIT file=system.md
+<<<SEARCH
+  * Output EXACTLY in the protocol below. SEARCH text must match the shown source byte-for-byte (same indentation). Keep SEARCH blocks short (3-15 lines) and unique.
+
+OUTPUT PROTOCOL:
+===
+  * Output EXACTLY in the protocol below. SEARCH text must match the shown source byte-for-byte (same indentation). Keep SEARCH blocks short (3-15 lines) and unique.
+
+SEARCH DISCIPLINE (this is the #1 cause of gate failures - follow it literally):
+  1. Before writing each EDIT, locate the exact lines in the "Relevant code chunks" section and COPY them character-for-character into SEARCH (whitespace, commas, quotes, comments). Do not retype from memory, do not "clean up" formatting, do not reformat the replacement's untouched lines.
+  2. SEARCH must be a contiguous substring of ONE shown chunk. Never span two chunks or invent a symbol/import/function that is not visible.
+  3. Only edit a file if its code appears in the shown chunks. If the knob you want is not shown, DO NOT emit an EDIT for it - instead pick the closest change that IS shown and name the missing symbols in KEYWORDS.
+  4. Keep the replacement minimal: change only the lines that implement your one idea; leave surrounding lines byte-identical to the original so the patch stays small and applies cleanly.
+  5. Valid Python/shell syntax in the replacement: matching brackets/quotes, correct indentation, no stray diff markers (no leading '+', '-', or ' ').
+  6. One coherent change per proposal; if you need two files, emit one EDIT per file with the same idea.
+
+OUTPUT PROTOCOL:
+===
+>>>
+>>>
