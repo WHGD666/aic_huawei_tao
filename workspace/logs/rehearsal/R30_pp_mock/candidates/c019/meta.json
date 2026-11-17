@@ -1,0 +1,32 @@
+{
+ "id": "c019",
+ "parent": "c016",
+ "hypothesis": "The parent gates density relaxation on global overflow, but the real TNS cost is congestion-driven detours that appear as *per-region* overflow; gate the extra relaxation (mu floor 0.5*LOWER_PCOF) on the *worst-region* overflow not having grown, so density pressure is fully restored exactly in the bins that are getting congested, while wirelength-friendly relaxation stays active where congestion is stable.",
+ "expected_effect": "WNS slightly better, TNS better (fewer detours in hot regions), overflow same or lower, runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906316.242392,
+ "status": "gate_failed",
+ "gate_report": "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.00556,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "PlaceObj.update_density_weight",
+  "cur_metric.overflow",
+  "update_density_weight_op_overflow",
+  "density_weight",
+  "stop_overflow"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 22100
+}

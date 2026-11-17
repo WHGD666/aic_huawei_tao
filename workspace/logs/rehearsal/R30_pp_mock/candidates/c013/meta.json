@@ -1,0 +1,35 @@
+{
+ "id": "c013",
+ "parent": "c012",
+ "hypothesis": "The parent's density-weight relaxations all act on the *global* density weight, but the real TNS cost comes from a few congested bins forcing detours. Instead of further loosening the global weight, I will make the early-iteration damping smoother (quadratic ramp over a longer window) so the density weight grows gradually and the placer spends more iterations in a low-congestion, wirelength-friendly regime before density pressure ramps up — this should reduce congestion-driven detours (overflow) and let the timing repair see shorter nets, lowering TNS broadly without starving density (the ramp still reaches full strength by iteration 100).",
+ "expected_effect": "WNS same or slightly better; TNS improved (more moderate violations removed); overflow same or lower; runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906260.7299469,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5739806818704118,
+ "score_robust": 0.13500930249116333,
+ "per_case": {
+  "bp_fe-ng45": 0.2364170260494948,
+  "bp-ng45": 0.22563837242060233,
+  "ariane133-ng45": 0.11192528340031475
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with robust score +0.135 and no invalid runs. Gains are broad—dTNS +12.9% to +31.4%, dWNS +9.1% to +23.4%—consistent with the mechanism: a smoother quadratic ramp keeps the placer in a wirelength-friendly, low-overflow regime longer, so timing repair sees shorter nets. Overflow (~84–104) stayed controlled, so density wasn't starved. Next step: sweep the ramp window length (e.g., 80/100/120 iterations) and curvature to find whether a longer or gentler ramp yields further TNS gains without overflow regressing.",
+ "llm_cost_cny": 0.0048802,
+ "eval_wall_s": 0.00012135505676269531,
+ "tags": [
+  "update_density_weight_op_hpwl",
+  "density_weight",
+  "LOWER_PCOF",
+  "UPPER_PCOF",
+  "update_gamma",
+  "stop_overflow"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21200
+}

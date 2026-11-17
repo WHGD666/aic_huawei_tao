@@ -1,0 +1,36 @@
+{
+ "id": "c026",
+ "parent": "c023",
+ "hypothesis": "Combine the two best independent mechanisms — c024's criticality-aware area-balance repair (which protects critical macros from being flipped) and c021/c025's late-stage per-bin density-weight capping (which reduces regional congestion) — by tightening c024's criticality shrink coefficient from 3.0 to 6.0 (x2), so the repair more strongly preserves critical macro co-location while keeping the already-validated density cap in place; this is a modest, robust fine-tune of the best candidate.",
+ "expected_effect": "WNS roughly flat to slightly better on all three cases; TNS improves modestly (+2–5% over c024) as fewer critical macros are re-cut during balance repair; overflow unchanged (partition-only change); runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794906380.2826855,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5910561296792474,
+ "score_robust": 0.14841117974556065,
+ "per_case": {
+  "bp_fe-ng45": 0.23359589767404051,
+  "bp-ng45": 0.2291346791005092,
+  "ariane133-ng45": 0.1283255529046977
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: tightening c024's criticality shrink coefficient to 6.0 while retaining the density cap improved all three cases (all valid, robust +0.148). Gains are broad—bp_fe-ng45 shows the largest dWNS (+27.3%) and dTNS (+21.0%), with ariane133-ng45 modest (+16.0%/+10.8%) and bp-ng45 strong on TNS (+29.0%). Mechanism: stronger critical-macro preservation reduces disruptive flips, and the per-bin density cap keeps regional overflow in check (~110–177), so co-location and congestion gains compound rather than trade off. Next step: sweep the coefficient (e.g., 4.5/6.0/7.5) to confirm 6.0 is near-optimal rather than just monotonic improvement.",
+ "llm_cost_cny": 0.0061576,
+ "eval_wall_s": 0.0001647472381591797,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "_eff_area",
+  "contrastive_loss",
+  "masked_scaled_density_weight",
+  "gamma",
+  "target_density"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23660
+}

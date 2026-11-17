@@ -1,0 +1,98 @@
+{
+ "candidate_id": "c027",
+ "wall_s": 0.00011992454528808594,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": -0.23078391199442366,
+   "tns": -107.82199120565453,
+   "overflow": 251.25152642291087,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": -0.28312520630749277,
+   "tns": -82.75576230476666,
+   "overflow": 172.53448389643123,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": -0.3224238785562102,
+   "tns": -104.61037303219796,
+   "overflow": 101.48142167635555,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": -0.5195502913900946,
+   "tns": -347.88761687611134,
+   "overflow": 117.35401005521774,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": -0.47543271680594745,
+   "tns": -438.4846673873056,
+   "overflow": 28.108756197506338,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": -0.4322595024861943,
+   "tns": -328.1329721985686,
+   "overflow": 143.7937094919409,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": -0.6540828286381238,
+   "tns": -626.3835866486941,
+   "overflow": 117.46164039045904,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": -0.7796823974967737,
+   "tns": -778.0411066354058,
+   "overflow": 153.21974868039226,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": -0.6418137332934326,
+   "tns": -760.4796802387015,
+   "overflow": 81.45383283069911,
+   "valid": true,
+   "fail_reason": ""
+  }
+ },
+ "stage_logs": {
+  "bp_fe-ng45/1001": "[INFO] wns=-0.231 tns=-107.8 overflow=251\n",
+  "bp_fe-ng45/1002": "[INFO] wns=-0.283 tns=-82.8 overflow=173\n",
+  "bp_fe-ng45/1003": "[INFO] wns=-0.322 tns=-104.6 overflow=101\n",
+  "bp-ng45/1001": "[INFO] wns=-0.520 tns=-347.9 overflow=117\n",
+  "bp-ng45/1002": "[INFO] wns=-0.475 tns=-438.5 overflow=28\n",
+  "bp-ng45/1003": "[INFO] wns=-0.432 tns=-328.1 overflow=144\n",
+  "ariane133-ng45/1001": "[INFO] wns=-0.654 tns=-626.4 overflow=117\n",
+  "ariane133-ng45/1002": "[INFO] wns=-0.780 tns=-778.0 overflow=153\n",
+  "ariane133-ng45/1003": "[INFO] wns=-0.642 tns=-760.5 overflow=81\n"
+ }
+}

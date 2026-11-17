@@ -1,0 +1,36 @@
+{
+ "id": "c025",
+ "parent": "c021",
+ "hypothesis": "The parent caps *how high* the per-bin density weight can grow (4x median) but leaves the masked_scatter update free to push hot-bin weights *downward* to 1e-12 whenever `density_weight_new` is small, and — more importantly — the cap is applied to every bin uniformly, so bins that are already at the cap get no relief while the global weight keeps climbing. Instead, make the per-bin cap adaptive to the *spread* of the current per-bin weights (cap at median + k*IQR-like spread), so hot bins in a congested region are throttled relative to their peers rather than by an absolute multiple of the median, which should reduce regional detours that inflate TNS.",
+ "expected_effect": "TNS improves on all three (regional congestion relief → fewer moderate violations); WNS roughly neutral to slightly better; overflow unchanged or slightly lower; runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906359.2952871,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.6500501720355257,
+ "score_robust": 0.17165008974423132,
+ "per_case": {
+  "bp_fe-ng45": 0.2752093598597299,
+  "bp-ng45": 0.16567114200598435,
+  "ariane133-ng45": 0.20916967016981147
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with robust score +0.172 and no invalid runs. Largest gain on bp_fe-ng45 (score +0.275, dWNS +32.1%, dTNS +24.1%), consistent with adaptive spread-based capping throttling hot bins relative to congested peers, reducing regional detours and TNS inflation. Overflow rose modestly (~96–126), suggesting a mild density/legality tradeoff worth monitoring. Next step: sweep the spread multiplier k (e.g., 1.0–2.0×IQR) across seeds to confirm the TNS gain persists without overflow regressions, and check whether the 1e-12 downward floor is still needed under adaptive capping.",
+ "llm_cost_cny": 0.0050772,
+ "eval_wall_s": 0.00010991096496582031,
+ "tags": [
+  "build_update_density_weight",
+  "density_weight",
+  "update_mask",
+  "stop_overflow",
+  "density_weight_step_size",
+  "gamma",
+  "target_density"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21399
+}

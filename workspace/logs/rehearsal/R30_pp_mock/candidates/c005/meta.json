@@ -1,0 +1,38 @@
+{
+ "id": "c005",
+ "parent": null,
+ "hypothesis": "The gamma schedule in `update_gamma` is extremely aggressive (coef = 10^((overflow-0.1)*20/9-1)); at overflow≈0.1 it gives coef≈0.1 which shrinks gamma and makes the WA wirelength model *more* convex/close to HPWL late in optimization, but at the start (overflow high) gamma blows up to huge values so the wirelength gradient is nearly flat and cells barely move on wirelength — this weak early wirelength signal leaves critical nets long. Clamping the coefficient to a modest band [0.5, 2.0] gives a steadier, non-degenerate gamma trajectory so the placer actually optimizes wirelength throughout, shortening critical paths and reducing TNS.",
+ "expected_effect": "WNS slightly better/same, TNS modestly better on all three; overflow unchanged (~120); runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "probe",
+ "created_at": 1794906211.9231684,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:HBT min-spacing violation",
+  "bp_fe-ng45/1002:HBT min-spacing violation",
+  "bp_fe-ng45/1003:KeyError in partition",
+  "bp-ng45/1001:KeyError in partition",
+  "bp-ng45/1002:KeyError in partition",
+  "bp-ng45/1003:legalization overlap"
+ ],
+ "analysis": "Invalid: legality failures (min-spacing violations, legalization overlap) plus crashes (KeyError in partition). Systematic across all seeds of bp_fe-ng45 and bp-ng45 cases, so the candidate says nothing about the hypothesis. Likely the clamped gamma band interacts badly with the partition/legalization stages. To make the idea legal: keep the [0.5, 2.0] clamp but re-tune the partition and legalization spacing margins, or apply the clamp only during global placement and restore the original schedule before detailed placement/legalization.",
+ "llm_cost_cny": 0.0034964,
+ "eval_wall_s": 8.606910705566406e-05,
+ "tags": [
+  "update_gamma",
+  "base_gamma",
+  "gamma",
+  "timing_opt_flag",
+  "net_weighting_scheme",
+  "max_net_weight"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 18182
+}

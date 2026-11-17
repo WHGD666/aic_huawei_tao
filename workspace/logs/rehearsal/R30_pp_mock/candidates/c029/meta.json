@@ -1,0 +1,32 @@
+{
+ "id": "c029",
+ "parent": "c010",
+ "hypothesis": "Combine c023/c027's proven criticality-weighted contrastive loss (already in parent) with a modest fine-tune of its edge-weighting strength in the positive-pair term — clamping the per-edge timing weight to a bounded range so critical edges dominate but non-critical edges are not fully suppressed, improving robustness across circuits without new mechanisms.",
+ "expected_effect": "Small positive dTNS (+2–6%) and neutral-to-slightly-positive dWNS across all three cases; no overflow change; no runtime change (same epochs).",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907464.336998,
+ "status": "gate_failed",
+ "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.005712399999999999,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "contrastive_loss",
+  "_edge_timing_weights",
+  "train_gnn_partition",
+  "_refine_partition_by_area",
+  "update_edge_weights"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20755
+}

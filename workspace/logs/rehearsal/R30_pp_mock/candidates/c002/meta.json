@@ -1,0 +1,32 @@
+{
+ "id": "c002",
+ "parent": null,
+ "hypothesis": "The graph-cut partitioner's `_compute_swap_gain` weights every cut edge equally (uniform adjacency), so the partition ignores timing criticality; making the swap-gain use the GraphBuilder's edge weights (which can carry net criticality) will keep critical paths same-tier and reduce TNS after the fixed repair pass.",
+ "expected_effect": "TNS improves modestly on all three circuits (critical nets stay intra-tier, fewer cross-tier detours); WNS roughly unchanged or slightly better; overflow unchanged; runtime unchanged.",
+ "files_changed": [],
+ "phase": "probe",
+ "created_at": 1794906193.8904338,
+ "status": "gate_failed",
+ "gate_report": "ERROR: no files changed",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "ERROR: no files changed"
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.0041154,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "GraphCutPartitioner._build_adjacency",
+  "GraphBuilder.update_edge_weights",
+  "GraphBuilder._build_graph",
+  "edge_weights",
+  "GNNPartitioner.contrastive_loss",
+  "gnn_partition",
+  "_refine_partition_by_embedding_distance"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 17992
+}

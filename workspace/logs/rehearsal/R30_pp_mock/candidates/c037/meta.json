@@ -1,0 +1,37 @@
+{
+ "id": "c037",
+ "parent": "c027",
+ "hypothesis": "The parent's criticality-aware area repair uses a fixed shrink factor 3.0 on critical macros' effective area; c034 showed x2 penalty (0.05→0.10 in a different variant) helped, c035 showed over-tightening hurts. Modestly increasing the shrink factor from 3.0 to 4.5 (x1.5) on the already-validated c024 mechanism strengthens the \"don't move critical macros\" preference without the over-tightening seen in c026, improving TNS broadly across all three cases.",
+ "expected_effect": "WNS small improvement (+2–5%), TNS improvement (+5–12%) across bp_fe, bp, ariane133; overflow unchanged (~120–138); runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907505.6259649,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:legalization overlap",
+  "bp_fe-ng45/1003:HBT min-spacing violation",
+  "bp-ng45/1001:KeyError in partition",
+  "bp-ng45/1002:KeyError in partition",
+  "bp-ng45/1003:KeyError in partition"
+ ],
+ "analysis": "Invalid: mixed legality (overlap, min-spacing), crash (KeyError in partition), and timeout failures. Systematic across all seeds of both cases (bp_fe-ng45 and bp-ng45), so this candidate says nothing about the hypothesis. The KeyError in partition suggests the shrink-factor change broke a downstream partition lookup (likely missing/renamed critical-macro entries), cascading into legality and timeout. To make the idea legal: guard the partition lookup against absent critical macros, validate shrink factor bounds before repair, and re-run with per-stage timeouts to isolate the crash from the timeout.",
+ "llm_cost_cny": 0.0051329999999999995,
+ "eval_wall_s": 0.0001366138458251953,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "contrastive_loss",
+  "_edge_timing_weights",
+  "area_balance_error"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23271
+}

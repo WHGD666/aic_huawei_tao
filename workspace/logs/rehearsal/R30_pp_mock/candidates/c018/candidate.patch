@@ -1,0 +1,48 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..c722d23 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,6 +846,43 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                ### allow the density weight to relax more when HPWL degrades,
++                ### so wirelength/timing is not starved by density pressure,
++                ### but only while overflow is not rising: if the current
++                ### overflow exceeds the previous one the cells are being
++                ### pushed into congested regions, so keep the full density
++                ### pressure (do not relax) to clear the congestion first.
++                try:
++                    cur_ovf = float(cur_metric.overflow)
++                    prev_ovf = float(getattr(self, "_prev_overflow", cur_ovf))
++                except Exception:
++                    cur_ovf = prev_ovf = 0.0
++                self._prev_overflow = cur_ovf
++                ### TNS cost comes from *local* hotspots, not the global
++                ### overflow scalar.  Look at the worst per-bin density and
++                ### only relax the density weight when no region is locally
++                ### saturated; otherwise keep full density pressure there so
++                ### cells (and their critical nets) are not pushed into
++                ### congestion-driven detours.
++                try:
++                    dens = cur_metric.density
++                    if dens.numel() > 0:
++                        worst_dens = float(dens.max())
++                    else:
++                        worst_dens = 0.0
++                except Exception:
++                    worst_dens = 0.0
++                ### per-bin density is normalized so ~1.0 means saturated;
++                ### allow a little slack above 1.0 before we stop relaxing.
++                relax_ok = (cur_ovf <= prev_ovf) and (worst_dens <= 1.05)
++                if relax_ok:
++                    mu = mu.clamp(min=0.5 * LOWER_PCOF)
++                ### temper early growth of density pressure: when HPWL is still
++                ### noisy in the first iterations, growing the density weight
++                ### fast pushes cells into congestion-driven detours that cost
++                ### TNS later; damp mu toward 1 early, keep full band later.
++                damp = min(1.0, float(iteration) / 50.0)
++                mu = mu ** damp
+                 self.density_weight *= mu
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):

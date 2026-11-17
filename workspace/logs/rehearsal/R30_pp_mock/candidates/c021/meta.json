@@ -1,0 +1,35 @@
+{
+ "id": "c021",
+ "parent": "c011",
+ "hypothesis": "The parent's density relaxation is a single global scalar, but the TNS cost is driven by *regional* density spikes in the hottest bins; instead of further loosening the global weight, cap the per-bin density weight growth (`density_weight_new`) more tightly in the late stage so hot regions cannot explode and displace critical cells, while leaving the global ramp untouched — this stabilizes TNS without weakening wirelength/timing pressure elsewhere.",
+ "expected_effect": "WNS slightly better or neutral, TNS improved (fewer moderate violations from regional over-crowding), overflow unchanged or slightly lower, runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906326.4148672,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5924123436436548,
+ "score_robust": 0.17827664458878612,
+ "per_case": {
+  "bp_fe-ng45": 0.21657594597511245,
+  "bp-ng45": 0.2046175051317404,
+  "ariane133-ng45": 0.1712188925368019
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis holds: capping late-stage per-bin density weight growth improved TNS across all three cases (dTNS +20.7% to +31.0%) with WNS also improving, and no invalid runs. The mechanism is consistent with regional density spikes being contained, freeing critical cells from displacement—bp_fe-ng45 shows the largest TNS gain (+31.0%) despite modest WNS (+8.1%), suggesting reduced hot-bin congestion rather than global loosening. Next step: sweep the cap value (e.g., tighter vs. current) on bp_fe-ng45 and ariane133-ng45 to find the knee where TNS gains saturate before WNS or wirelength degrades.",
+ "llm_cost_cny": 0.0047732,
+ "eval_wall_s": 0.00011134147644042969,
+ "tags": [
+  "density_weight_new",
+  "update_density_weight_op_overflow",
+  "density_quad_coeff",
+  "stop_overflow",
+  "update_mask",
+  "density_weight_step_size"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21264
+}

@@ -1,0 +1,32 @@
+{
+ "id": "c032",
+ "parent": "c024",
+ "hypothesis": "The parent's criticality-weighted contrastive loss is sound, but the fragile `_macro_criticality` attribute path in the area repair caused recent gate failures/invalid runs. Revert the area-repair criticality penalty to a plain, robust area-balance move (no attribute lookup) while keeping the criticality-weighted contrastive loss — restoring the proven c023 mechanism without the fragile path.",
+ "expected_effect": "WNS/TNS unchanged-to-slightly-better vs c023/c027 (robust ~+0.18); overflow unchanged; runtime unchanged; removes the failure mode that produced c031's timeouts/legality errors.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907482.0583448,
+ "status": "gate_failed",
+ "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation). Closest shown line: '# Try moving a macro from bottom to upper'",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation). Closest shown line: '# Try moving a macro from bottom to up"
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.0074102,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "contrastive_loss",
+  "_edge_timing_weights",
+  "best_score"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23515
+}

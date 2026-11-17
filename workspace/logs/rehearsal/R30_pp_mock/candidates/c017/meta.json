@@ -1,0 +1,34 @@
+{
+ "id": "c017",
+ "parent": "c012",
+ "hypothesis": "The parent relaxes the density weight only when *global* overflow is not rising, but the TNS cost comes from a handful of congested bins whose local overflow keeps climbing even while the global average plateaus; gate the extra density relaxation (`mu.clamp(min=0.5*LOWER_PCOF)`) on the *worst-bin* overflow trend instead of the global one, so relaxation is allowed only while no single region is getting more congested — keeping critical nets short without generating local detours that hurt TNS.",
+ "expected_effect": "TNS improves modestly (+3–8%) on all three cases; WNS flat-to-slightly-positive; overflow unchanged or slightly lower; runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906302.0101955,
+ "status": "gate_failed",
+ "gate_report": "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-LoL/dreamplace/PlaceObj.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.00596,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "PlaceObj.build_update_density_weight",
+  "cur_metric.overflow",
+  "PreconditionOp.set_overflow",
+  "density_weight",
+  "update_density_weight_op_overflow",
+  "timing.py",
+  "net_weighting_scheme"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21433
+}

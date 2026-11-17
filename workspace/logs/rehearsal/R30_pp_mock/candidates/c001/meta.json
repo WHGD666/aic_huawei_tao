@@ -1,0 +1,33 @@
+{
+ "id": "c001",
+ "parent": null,
+ "hypothesis": "Enabling timing-driven net weighting in the analytical placer (timing_opt_flag) makes the placer pull timing-critical nets shorter, reducing many moderate violations (TNS) across all circuits without special-casing.",
+ "expected_effect": "WNS slightly better or unchanged; TNS improves (5-15%) on all three cases; overflow unchanged (placement-only); runtime +small.",
+ "files_changed": [],
+ "phase": "probe",
+ "created_at": 1794906188.149936,
+ "status": "gate_failed",
+ "gate_report": "no EDIT blocks parsed (EDIT markers present but malformed: check 'file=' header line, a '<<<SEARCH' line, a '===' separator line, and a closing '>>>' line)",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "no EDIT blocks parsed (EDIT markers present but malformed: check 'file=' header line, a '<<<SEARCH' line, a '===' separator line, and a closing '>>>' line)"
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.0026820000000000004,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "timing_opt_flag",
+  "net_weighting_scheme",
+  "max_net_weight",
+  "momentum_decay_factor",
+  "NonLinearPlace.__call__",
+  "PlaceObj.obj_and_grad_fn",
+  "update_net_weights",
+  "build_timing_op"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 17268
+}

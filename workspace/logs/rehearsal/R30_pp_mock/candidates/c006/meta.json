@@ -1,0 +1,36 @@
+{
+ "id": "c006",
+ "parent": null,
+ "hypothesis": "The baseline GNN partitioner trains on a contrastive loss whose negative pairs are sampled at random and whose positive pairs ignore edge weights; shortening the training schedule (fewer epochs) is risky, but a safer attributable probe is to make the embedding smoother/more clusterable by raising the GIN depth from 3 to 2 layers — no, instead we take a clean single-knob probe on the training schedule: reduce `num_epochs` default from 100 to 40 so the contrastive loss does not over-fit to random negative pairs (which the baseline never refreshes), yielding embeddings that better reflect local connectivity and thus fewer critical-net cuts / more balanced tiers.",
+ "expected_effect": "Small positive TNS improvement on all three cases (less over-clustered, more connectivity-faithful partition → shorter cross-tier critical nets and better repair headroom); WNS roughly unchanged; overflow unchanged; runtime of the partition step reduced (~40% of GNN training time).",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "probe",
+ "created_at": 1794906217.1855757,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": -0.07418191612610289,
+ "score_robust": -0.06076777082842106,
+ "per_case": {
+  "bp_fe-ng45": -0.073650082823647,
+  "bp-ng45": 0.012115283216664588,
+  "ariane133-ng45": -0.012647116519120476
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis did not hold: shortening training to 40 epochs slightly worsened the aggregate score (total −0.074, robust −0.061), with all cases valid. The clearest regression is bp_fe-ng45 (score −0.074, dTNS −11.2%), while bp-ng45 marginally improved (+0.012). This suggests fewer epochs underfit the contrastive objective rather than reducing overfitting to stale random negatives, degrading timing on the most sensitive case. Next step: sweep intermediate schedules (e.g., 60–80 epochs) or refresh negative pairs periodically, isolating whether the issue is schedule length or negative-sampling staleness.",
+ "llm_cost_cny": 0.0035382,
+ "eval_wall_s": 9.441375732421875e-05,
+ "tags": [
+  "train_gnn_partition",
+  "num_epochs",
+  "contrastive_loss",
+  "GNNPartitioner.train_step",
+  "gnn_partition",
+  "_refine_partition_by_embedding_distance",
+  "update_edge_weights"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 19265
+}

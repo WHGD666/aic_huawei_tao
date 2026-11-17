@@ -1,0 +1,20 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..72866fc 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,6 +846,15 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                ### allow the density weight to relax more when HPWL degrades,
++                ### so wirelength/timing is not starved by density pressure
++                mu = mu.clamp(min=0.5 * LOWER_PCOF)
++                ### temper early growth of density pressure: when HPWL is still
++                ### noisy in the first iterations, growing the density weight
++                ### fast pushes cells into congestion-driven detours that cost
++                ### TNS later; damp mu toward 1 early, keep full band later.
++                damp = min(1.0, float(iteration) / 50.0)
++                mu = mu ** damp
+                 self.density_weight *= mu
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):

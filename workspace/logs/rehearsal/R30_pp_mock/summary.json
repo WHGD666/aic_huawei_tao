@@ -1,0 +1,54 @@
+{
+ "task": "partition_placement",
+ "run_dir": "logs/R30",
+ "budget": {
+  "evaluations": 28,
+  "cost_cny": 0.1898424,
+  "usage": {
+   "prompt_tokens": 279020,
+   "completion_tokens": 28736,
+   "cache_hit_tokens": 162944,
+   "reasoning_tokens": 0
+  },
+  "llm_calls": 76,
+  "started_at": 1794906182.7638102
+ },
+ "n_candidates": 37,
+ "n_evaluated": 20,
+ "n_gate_failed": 9,
+ "n_invalid": 8,
+ "best": {
+  "id": "c024",
+  "parent": "c010",
+  "hypothesis": "The GNN contrastive loss uses a single global edge-weight tensor, but the *area-balance repair* then flips nodes by pure area delta, potentially undoing critical-pair co-location; by making the swap-gain prefer moving *non-critical* (low timing-weight) nodes and penalize breaking critical nets, we keep timing-critical logic co-located while still meeting area balance — reducing TNS without WNS regressions.",
+  "expected_effect": "WNS small improvement (~+2-5%), TNS improvement (~+5-15%), overflow unchanged, runtime unchanged.",
+  "files_changed": [
+   "Place-MoL/src/partition/GNN/GNN_partition.py"
+  ],
+  "phase": "structural",
+  "created_at": 1794906349.6231596,
+  "status": "evaluated",
+  "gate_report": "OK",
+  "score_total": 0.7151957903697289,
+  "score_robust": 0.21066438693423806,
+  "per_case": {
+   "bp_fe-ng45": 0.24041374835457288,
+   "bp-ng45": 0.20346855105613992,
+   "ariane133-ng45": 0.27131349095901613
+  },
+  "all_valid": true,
+  "fail_reasons": [],
+  "analysis": "Hypothesis held: all three cases improved, with dTNS gains (+27.5% to +36.0%) exceeding dWNS gains (+9.4% to +14.4%), consistent with the mechanism—preferring non-critical swaps preserves critical-pair co-location while area balance is still met. Overflow (~87–147) suggests some congestion cost worth monitoring. Next step: sweep the criticality penalty weight and log how many critical nets are broken per repair pass, to confirm the mechanism directly and find the TNS/overflow sweet spot.",
+  "llm_cost_cny": 0.005972,
+  "eval_wall_s": 0.0001628398895263672,
+  "tags": [
+   "_refine_partition_by_area",
+   "_edge_timing_weights",
+   "contrastive_loss",
+   "update_edge_weights",
+   "gnn_partition"
+  ],
+  "max_overflow": null,
+  "prompt_chars": 21275
+ }
+}

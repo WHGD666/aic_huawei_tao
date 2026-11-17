@@ -1,0 +1,35 @@
+{
+ "id": "c023",
+ "parent": "c010",
+ "hypothesis": "The parent's timing-weighted contrastive loss pulls critical neighbors together, but the *area-balance repair* (`_refine_partition_by_area`) then flips whichever macro best fixes the area budget regardless of criticality, undoing those gains; make the repair prefer moving non-critical/low-degree macros by scaling each candidate's effective area with its criticality (critical macros appear \"heavier\", so they are less likely to be moved and, when moved, only for a larger area gain), keeping the same area target and legality.",
+ "expected_effect": "TNS improves on all three cases (fewer critical nets re-cut by balance repair); WNS flat-to-slightly-better; overflow and runtime unchanged; still legal and area-balanced.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906342.3316622,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5741417945556766,
+ "score_robust": 0.18790871535505801,
+ "per_case": {
+  "bp_fe-ng45": 0.1896099777671443,
+  "bp-ng45": 0.18829984824836277,
+  "ariane133-ng45": 0.19623196854016958
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with dWNS +13.5–20.3% and dTNS +18–24%, and no validity failures. The mechanism is consistent with criticality-weighted area repair preserving critical neighbors that the contrastive loss had clustered, rather than flipping them for area alone. bp_fe-ng45 shows the largest WNS gain (+20.3%), suggesting repair was most disruptive there originally. Next step: sweep the criticality scaling exponent (e.g., 0.5, 1, 2) to find where area legality and timing gains balance, and verify overflow stays within budget across seeds.",
+ "llm_cost_cny": 0.005828999999999999,
+ "eval_wall_s": 0.00014281272888183594,
+ "tags": [
+  "_refine_partition_by_area",
+  "macro_areas",
+  "_edge_timing_weights",
+  "criticality",
+  "graph_builder.update_node_features",
+  "_refine_partition_by_embedding_distance"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21275
+}

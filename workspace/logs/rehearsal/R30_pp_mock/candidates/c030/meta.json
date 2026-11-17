@@ -1,0 +1,32 @@
+{
+ "id": "c030",
+ "parent": "c010",
+ "hypothesis": "Fine-tuning the best candidate (criticality-weighted contrastive loss + criticality-aware area repair) by modestly amplifying the positive-pair criticality edge weight (x2, clamped) so critical neighbors are pulled together more strongly without breaking area balance, improving TNS broadly.",
+ "expected_effect": "WNS slightly better to flat; TNS improvement +5-15% on all three cases; overflow unchanged; runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907469.1549752,
+ "status": "gate_failed",
+ "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.0054636,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "_edge_timing_weights",
+  "_refine_partition_by_area",
+  "contrastive_loss",
+  "edge_weights",
+  "criticality"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20539
+}

@@ -3,12 +3,15 @@ __pycache__/
 *.pyc
 .pytest_cache/
 results/**
-logs/**
-candidates/**
 !results/.gitkeep
-!logs/.gitkeep
+candidates/**
 !candidates/.gitkeep
 baseline/**
 !baseline/.gitkeep
+# logs：默认不入库；彩排样例例外（提交材料 logs/ 结构的真实样本），work/ 工作副本与 LLM 录音不要
+logs/*
+!logs/.gitkeep
+!logs/rehearsal/
+logs/rehearsal/**/work/
 *.log
 *.vhdx

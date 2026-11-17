@@ -1,0 +1,12 @@
+{
+  "evaluations": 28,
+  "cost_cny": 0.1898424,
+  "usage": {
+    "prompt_tokens": 279020,
+    "completion_tokens": 28736,
+    "cache_hit_tokens": 162944,
+    "reasoning_tokens": 0
+  },
+  "llm_calls": 76,
+  "started_at": 1794906182.7638102
+}

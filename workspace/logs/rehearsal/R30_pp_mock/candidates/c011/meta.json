@@ -1,0 +1,35 @@
+{
+ "id": "c011",
+ "parent": "c009",
+ "hypothesis": "The parent's relaxed density-weight floor (0.5*LOWER_PCOF) helps wirelength/timing but the *asymmetric* band still lets density pressure ramp up aggressively in early iterations before HPWL signal is meaningful; making the density weight growth slower during the first iterations (when overflow is still high and HPWL noisy) and letting it relax fully later will reduce residual congestion-driven detours that hurt TNS, without starving density control at the end.",
+ "expected_effect": "Small WNS/TNS improvement on all three circuits (TNS gains preferred since weight 0.6), unchanged overflow (~120, well under 300), negligible runtime change.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906246.6938465,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.48732253369279144,
+ "score_robust": 0.13804043863586268,
+ "per_case": {
+  "bp_fe-ng45": 0.1650339992154761,
+  "bp-ng45": 0.19094403864587317,
+  "ariane133-ng45": 0.13134449583144212
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with dTNS gains (+18–24%) exceeding dWNS (+6–13%), consistent with reduced congestion-driven detours rather than raw timing push. Overflow (~80–108) stayed controlled, so density wasn't starved. The slower early density-weight ramp plausibly let HPWL signal mature before density pressure dominated, cutting residual detours that hurt TNS. Next step: sweep the early-iteration growth rate (e.g., 2–3 slower schedules) to find where TNS gain saturates before overflow regresses, and verify on a larger case set.",
+ "llm_cost_cny": 0.004664199999999999,
+ "eval_wall_s": 0.0001347064971923828,
+ "tags": [
+  "LOWER_PCOF",
+  "UPPER_PCOF",
+  "density_weight",
+  "update_density_weight_op_hpwl",
+  "stop_overflow",
+  "NonLinearPlace.__call__"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20825
+}

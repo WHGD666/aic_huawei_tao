@@ -1,0 +1,33 @@
+{
+ "id": "c035",
+ "parent": "c034",
+ "hypothesis": "The parent's criticality penalty in the area-balance repair uses `max(1.0, area)` which over-weights large macros and can over-constrain balance; replacing it with a normalized, area-independent criticality penalty (crit * mean_area) keeps the criticality preference but reduces the risk of failing to reach the area target, improving robustness while retaining the proven co-location benefit.",
+ "expected_effect": "WNS roughly unchanged to slightly better; TNS slightly better or flat; overflow unchanged; runtime unchanged. More robust across circuits.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907496.3203163,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5118804816073539,
+ "score_robust": 0.14141662885813108,
+ "per_case": {
+  "bp_fe-ng45": 0.1345534933986892,
+  "bp-ng45": 0.17123106822083703,
+  "ariane133-ng45": 0.20609591998782764
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all runs valid, robust score +0.141, no case regressed. Gains concentrate in WNS/TNS (ariane133 +15.6%/+23.9%, bp +17.7%/+16.8%, bp_fe +8.4%/+17.1%) with overflow ~126–138, consistent with the normalized penalty relaxing over-constraint on large macros while preserving co-location. Next step: sweep the mean_area scaling factor (e.g., 0.5×–2×) across more seeds to confirm the balance-vs-criticality tradeoff is stable and not seed-specific.",
+ "llm_cost_cny": 0.005497,
+ "eval_wall_s": 0.0001647472381591797,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "contrastive_loss",
+  "_edge_timing_weights"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23769
+}

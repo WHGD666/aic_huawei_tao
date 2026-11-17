@@ -1,0 +1,35 @@
+{
+ "id": "c036",
+ "parent": "c027",
+ "hypothesis": "c024 (score +0.715) validated criticality-weighted contrastive loss + criticality-aware area repair; c034's x2 penalty fine-tune (0.05→0.10) regressed slightly. Reverting the criticality shrink factor from 3.0 back toward a modest x0.5 value (3.0→1.5) keeps the proven mechanism but reduces the risk that shrinking critical macros' effective area over-tightens the balance repair (the failure mode seen in c026/c034), improving robustness across circuits.",
+ "expected_effect": "WNS and TNS improve slightly or hold on all three cases (recovering c024-level ~+0.21 robust); overflow unchanged (~120–140); runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907501.227655,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5867609801083354,
+ "score_robust": 0.14602452614681116,
+ "per_case": {
+  "bp_fe-ng45": 0.13469111816768556,
+  "bp-ng45": 0.2560919854392978,
+  "ariane133-ng45": 0.19597787650135215
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: reverting the criticality shrink factor to 1.5 preserved the proven contrastive-loss/area-repair mechanism while avoiding the over-tightening seen in c026/c034. All three cases improved (total +0.587, robust +0.146, min +0.135), with bp-ng45 gaining most (dTNS +37.7%, dWNS +7.3%) and bp_fe-ng45 the least (dWNS +18.0%, dTNS +10.0%). Overflow stayed moderate (~122–152), suggesting balance repair is no longer over-constrained. Next step: sweep shrink factor 1.0–2.0 across more circuits to confirm the robustness sweet spot before locking it in.",
+ "llm_cost_cny": 0.005358,
+ "eval_wall_s": 0.00014328956604003906,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "contrastive_loss",
+  "edge_timing_weights",
+  "_refine_partition_by_embedding_distance",
+  "gnn_partition"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23058
+}

@@ -1,0 +1,40 @@
+{
+ "id": "c003",
+ "parent": null,
+ "hypothesis": "The density-weight update rule (hpwl-based) uses a fixed multiplicative band [LOWER_PCOF, UPPER_PCOF] around a fixed reference HPWL; tightening the upper growth cap and making the growth factor more conservative when HPWL stops improving will keep density weight from overshooting, yielding more uniform cell spreading and thus more room for the fixed timing-repair pass to insert buffers on critical bottom-tier nets, reducing TNS.",
+ "expected_effect": "Slightly lower peak density weight, better uniformity/density distribution -> more buffering room; WNS ~neutral to slightly better, TNS modest improvement (a few %), overflow unchanged, runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "probe",
+ "created_at": 1794906197.6483397,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:KeyError in partition",
+  "bp_fe-ng45/1003:stage timeout",
+  "bp-ng45/1001:stage timeout",
+  "bp-ng45/1002:HBT min-spacing violation",
+  "bp-ng45/1003:stage timeout"
+ ],
+ "analysis": "Invalid: mixed timeout (4 runs, including all seeds of bp_fe-ng45/1001 and bp-ng45/1003), one crash (KeyError in partition, bp_fe-ng45/1002), and one legality failure (HBT min-spacing, bp-ng45/1002). Timeouts look systematic per-case; crash/legality sporadic. So the candidate says nothing about the hypothesis. To make it legal: profile and cap the density-weight loop's runtime, guard the partition KeyError, and add a spacing-repair/legality check after weight updates before timing repair.",
+ "llm_cost_cny": 0.0036148,
+ "eval_wall_s": 7.224082946777344e-05,
+ "tags": [
+  "PlaceObj.build_update_density_weight",
+  "UPPER_PCOF",
+  "LOWER_PCOF",
+  "density_weight",
+  "stop_overflow",
+  "PlaceObj.initialize_density_weight",
+  "TimingOpt.update_net_weights",
+  "net_weighting_scheme"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 17768
+}

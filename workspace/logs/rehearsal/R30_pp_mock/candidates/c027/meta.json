@@ -1,0 +1,33 @@
+{
+ "id": "c027",
+ "parent": "c023",
+ "hypothesis": "c024's criticality-aware area repair is the strongest independent mechanism (score +0.715, robust +0.211) and c026's tighter criticality shrink (6.0) slightly diluted it on ariane133; reverting the shrink coefficient to the c024 value of 3.0 while keeping the density cap from c021 should recover robustness across all three cases.",
+ "expected_effect": "WNS/TNS roughly match or slightly exceed c024 (dTNS +27-36%), overflow unchanged, runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794906389.5985088,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5741417945556766,
+ "score_robust": 0.18790871535505801,
+ "per_case": {
+  "bp_fe-ng45": 0.1896099777671443,
+  "bp-ng45": 0.18829984824836277,
+  "ariane133-ng45": 0.19623196854016958
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: reverting the shrink coefficient to 3.0 while keeping c021's density cap recovered robustness across all three cases (total +0.574, robust +0.188, all valid). Gains are consistent—dWNS +13.5–20.3%, dTNS +18–24%—with bp_fe-ng45 showing the largest WNS improvement, consistent with criticality-aware repair no longer being diluted. Overflow remains moderate (~96–175). Next step: sweep the shrink coefficient between 3.0 and 6.0 (e.g., 4.0–5.0) to confirm 3.0 is optimal rather than merely better than 6.0, and check overflow headroom on bp_fe-ng45.",
+ "llm_cost_cny": 0.005450399999999999,
+ "eval_wall_s": 0.00011992454528808594,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "masked_scaled_density_weight",
+  "net_weighting_scheme"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23618
+}

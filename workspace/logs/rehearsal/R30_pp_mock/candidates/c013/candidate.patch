@@ -1,0 +1,35 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..ac19ff0 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,6 +846,30 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                ### allow the density weight to relax more when HPWL degrades,
++                ### so wirelength/timing is not starved by density pressure,
++                ### but only while overflow is not rising: if the current
++                ### overflow exceeds the previous one the cells are being
++                ### pushed into congested regions, so keep the full density
++                ### pressure (do not relax) to clear the congestion first.
++                try:
++                    cur_ovf = float(cur_metric.overflow)
++                    prev_ovf = float(getattr(self, "_prev_overflow", cur_ovf))
++                except Exception:
++                    cur_ovf = prev_ovf = 0.0
++                self._prev_overflow = cur_ovf
++                if cur_ovf <= prev_ovf:
++                    mu = mu.clamp(min=0.5 * LOWER_PCOF)
++                ### temper early growth of density pressure: when HPWL is still
++                ### noisy in the first iterations, growing the density weight
++                ### fast pushes cells into congestion-driven detours that cost
++                ### TNS later. Use a smooth quadratic ramp over a longer window
++                ### so the placer stays longer in a wirelength-friendly regime
++                ### and reaches full density strength only after the layout has
++                ### settled; this reduces congestion-driven detours (TNS).
++                t = min(1.0, float(iteration) / 100.0)
++                damp = t * t
++                mu = mu ** damp
+                 self.density_weight *= mu
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):

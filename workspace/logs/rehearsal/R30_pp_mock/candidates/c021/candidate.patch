@@ -1,0 +1,36 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..35d6dc5 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,6 +846,15 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                ### allow the density weight to relax more when HPWL degrades,
++                ### so wirelength/timing is not starved by density pressure
++                mu = mu.clamp(min=0.5 * LOWER_PCOF)
++                ### temper early growth of density pressure: when HPWL is still
++                ### noisy in the first iterations, growing the density weight
++                ### fast pushes cells into congestion-driven detours that cost
++                ### TNS later; damp mu toward 1 early, keep full band later.
++                damp = min(1.0, float(iteration) / 50.0)
++                mu = mu ** damp
+                 self.density_weight *= mu
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+@@ -860,7 +869,14 @@ class PlaceObj(nn.Module):
+                 self.density_weight_u += self.density_weight_step_size * density_weight_grad
+                 density_weight_s = 1 + self.density_quad_coeff * density_norm
+ 
+-                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=10)
++                ### cap per-bin density pressure: hot bins must not be allowed to
++                ### grow unbounded and shove critical cells into detours. The cap
++                ### is relative to the current global density weight so it scales
++                ### across circuits/PDKs instead of hard-coding a magnitude.
++                gw = self.density_weight.detach()
++                gw_med = gw.median()
++                per_bin_cap = (4.0 * gw_med).clamp(min=1e-12)
++                density_weight_new = (self.density_weight_u * density_weight_s).clamp(max=per_bin_cap)
+ 
+                 ### conditional update if this region's overflow is higher than stop overflow
+                 if(self.update_mask is None):

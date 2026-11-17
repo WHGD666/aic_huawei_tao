@@ -1,0 +1,32 @@
+{
+ "id": "c028",
+ "parent": "c010",
+ "hypothesis": "The parent (c023/c027) already uses criticality-weighted contrastive loss and criticality-aware area repair; the remaining lever in the shown chunks is the *magnitude* of the per-edge timing weight in the positive-pair term — currently the raw `_edge_timing_weights` are used directly, so a modest x2 amplification (cap at 2x) of the critical-edge weight in `contrastive_loss` will strengthen critical-neighbor co-location without changing area balance, giving a small, robust TNS gain across all three circuits.",
+ "expected_effect": "WNS ~same to slightly better (+0–5%), TNS better (+3–8%) on all cases, overflow unchanged, runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794906396.6631608,
+ "status": "gate_failed",
+ "gate_report": "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation).",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py: SEARCH block does not appear verbatim in the shown chunks (copy it exactly, same indentation)."
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.0057982,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "contrastive_loss",
+  "_edge_timing_weights",
+  "update_edge_weights",
+  "_refine_partition_by_area",
+  "train_gnn_partition"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20971
+}

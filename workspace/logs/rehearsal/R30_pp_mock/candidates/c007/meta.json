@@ -1,0 +1,35 @@
+{
+ "id": "c007",
+ "parent": null,
+ "hypothesis": "The baseline timing-driven net-weight update caps weights at `max_net_weight` and uses the default `net_weighting_scheme`; switching the update to the \"lilith\" scheme (momentum-based criticality accumulation) via the shown `TimingOpt.update_net_weights` dispatch will spread weight onto more moderately-critical nets, reducing many moderate violations (TNS) rather than only the worst path (WNS).",
+ "expected_effect": "TNS improves on all three cases (more nets get nonzero weight), WNS roughly neutral to slightly better, overflow unchanged, runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/ops/timing/timing.py"
+ ],
+ "phase": "probe",
+ "created_at": 1794906222.6679363,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.4897695492207977,
+ "score_robust": 0.1258863916527909,
+ "per_case": {
+  "bp_fe-ng45": 0.19649528662376,
+  "bp-ng45": 0.18222051860305852,
+  "ariane133-ng45": 0.11105374399397916
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: all three cases improved, with dTNS gains (+9.2% to +22.2%) generally exceeding dWNS gains (+12.4% to +15.4%), consistent with lilith spreading weight to moderately-critical nets and reducing many violations rather than only the worst path. All runs valid, no failures. Next step: sweep the lilith momentum/accumulation parameter and `max_net_weight` cap to confirm the TNS-over-WNS tradeoff is tunable and check overflow stays acceptable (~103–113) at higher weight spread.",
+ "llm_cost_cny": 0.0035009999999999998,
+ "eval_wall_s": 0.00016450881958007812,
+ "tags": [
+  "net_weighting_scheme",
+  "max_net_weight",
+  "momentum_decay_factor",
+  "update_net_weights",
+  "timing_opt_flag",
+  "params.net_weighting_scheme"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 19561
+}

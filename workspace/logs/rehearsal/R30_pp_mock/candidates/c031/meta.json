@@ -1,0 +1,37 @@
+{
+ "id": "c031",
+ "parent": "c023",
+ "hypothesis": "Recent gate failures suggest the parent patch's `_macro_criticality` attribute path is fragile; make the criticality-aware repair robust by falling back to a degree-based proxy when criticality is unavailable, and modestly reduce the shrink coefficient (3.0 -> 2.0) to fine-tune the best candidate while keeping the criticality-weighted contrastive loss.",
+ "expected_effect": "Small positive dTNS (+5-10%) and neutral-to-positive dWNS on all three circuits; no change to overflow or runtime; improved robustness because the repair no longer depends on an optional attribute being populated.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907472.6371784,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:HBT min-spacing violation",
+  "bp_fe-ng45/1003:HBT min-spacing violation",
+  "bp-ng45/1001:stage timeout",
+  "bp-ng45/1002:stage timeout",
+  "bp-ng45/1003:legalization overlap"
+ ],
+ "analysis": "Invalid: mixed legality (HBT min-spacing, legalization overlap) and stage timeouts, systematic across all seeds of both bp_fe-ng45 and bp-ng45 cases—so this candidate says nothing about the hypothesis. The degree-based fallback and shrink change can't be assessed. To make the idea legal: gate the fallback behind an explicit criticality-availability check with logging, and validate the 2.0 shrink on a single case first to rule out spacing/overlap regressions before full sweeps; also add per-stage timeouts to distinguish timeout from legality.",
+ "llm_cost_cny": 0.0058094,
+ "eval_wall_s": 0.00011420249938964844,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "contrastive_loss",
+  "_edge_timing_weights",
+  "_refine_partition_by_embedding_distance"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23141
+}

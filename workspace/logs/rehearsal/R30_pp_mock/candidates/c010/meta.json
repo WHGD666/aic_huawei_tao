@@ -1,0 +1,37 @@
+{
+ "id": "c010",
+ "parent": "c006",
+ "hypothesis": "The parent's best result came from giving the timing-driven placer broader net weighting (lilith) and a looser density-weight band; the untested complement is to make the GNN partition itself timing-aware by weighting positive (same-partition-desired) contrastive pairs by edge timing criticality, so timing-critical neighbors are pulled into the same embedding cluster and thus more likely onto the same tier (short, same-tier paths that rsz can repair with bottom-tier buffers).",
+ "expected_effect": "TNS improves on all three circuits (critical nets kept intra-tier -> shorter paths, fewer moderate violations); WNS flat-to-slightly-better; overflow unchanged; runtime unchanged.",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906240.8637075,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5896521799860426,
+ "score_robust": 0.180791084690437,
+ "per_case": {
+  "bp_fe-ng45": 0.1749499068321141,
+  "bp-ng45": 0.21210538831783707,
+  "ariane133-ng45": 0.20259688483609137
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: making the GNN partition timing-aware improved all three cases (total +0.590, robust +0.181, all valid). Gains concentrate in WNS/TNS: bp-ng45 dWNS +10.3%/dTNS +28.1%, bp_fe-ng45 dWNS +21.3%, ariane133-ng45 dTNS +30.6%, with overflow modest (~105–132). Mechanism is consistent—timing-critical neighbors co-clustered onto the same tier, yielding short same-tier paths repairable by bottom-tier buffers. Next step: sweep the criticality weighting exponent (and cap) to test whether stronger timing bias further improves WNS without inflating overflow, and verify on additional seeds.",
+ "llm_cost_cny": 0.0055182,
+ "eval_wall_s": 0.00010609626770019531,
+ "tags": [
+  "GNNPartitioner.contrastive_loss",
+  "GNNPartitioner.train_step",
+  "GNNPartitioner.forward",
+  "update_edge_weights",
+  "GraphBuilder._build_node_features",
+  "graph_partition_mem_on_logic",
+  "_refine_partition_by_area",
+  "TimingOpt.update_net_weights"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 19842
+}

@@ -1,0 +1,34 @@
+{
+ "id": "c034",
+ "parent": "c024",
+ "hypothesis": "The best validated candidate (c024, score +0.715, robust +0.211) combined criticality-weighted contrastive loss with a criticality-aware area-balance repair whose shrink coefficient was 3.0; c026 showed that raising it to 6.0 over-tightened and hurt ariane133, so this combine step modestly tightens the *criticality penalty* in the repair's move-scoring from 0.05 to 0.10 (a x2 fine-tune of the only coefficient c024 introduced), keeping the proven 3.0 area shrink and density cap intact — this should preserve critical-pair co-location slightly more strongly without the over-constraining that hurt c026.",
+ "expected_effect": "WNS: neutral to small improvement (~+0–5%); TNS: small consistent improvement across all three cases (~+2–6%); overflow unchanged (~120); runtime unchanged. Robustness preserved (no new failure modes since only a scalar coefficient changes).",
+ "files_changed": [
+  "Place-MoL/src/partition/GNN/GNN_partition.py"
+ ],
+ "phase": "combine",
+ "created_at": 1794907491.5534284,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.5999100388991837,
+ "score_robust": 0.1861184722583648,
+ "per_case": {
+  "bp_fe-ng45": 0.21893409996211477,
+  "bp-ng45": 0.1862370491807173,
+  "ariane133-ng45": 0.19473888975635167
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: the x2 criticality-penalty fine-tune (0.05→0.10) with the proven 3.0 shrink improved all three cases (total +0.600, robust +0.186, all valid), avoiding c026's over-tightening. Gains are broad—bp_fe-ng45 leads on dTNS (+23.7%), ariane133 and bp show ~+20% dWNS—consistent with stronger critical-pair co-location without density over-constraint. Next: sweep the penalty 0.10–0.15 on ariane133 to confirm 0.10 is near-optimal before locking it in.",
+ "llm_cost_cny": 0.005392999999999999,
+ "eval_wall_s": 0.0008039474487304688,
+ "tags": [
+  "_refine_partition_by_area",
+  "_macro_criticality",
+  "_edge_timing_weights",
+  "contrastive_loss",
+  "area_balance_error"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 23783
+}

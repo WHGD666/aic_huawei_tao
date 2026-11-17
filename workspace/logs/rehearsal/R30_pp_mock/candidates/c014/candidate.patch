@@ -1,0 +1,40 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..ca10131 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,7 +846,35 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                ### allow the density weight to relax more when HPWL degrades,
++                ### so wirelength/timing is not starved by density pressure
++                mu = mu.clamp(min=0.5 * LOWER_PCOF)
++                ### temper early growth of density pressure: when HPWL is still
++                ### noisy in the first iterations, growing the density weight
++                ### fast pushes cells into congestion-driven detours that cost
++                ### TNS later; damp mu toward 1 early, keep full band later.
++                damp = min(1.0, float(iteration) / 50.0)
++                mu = mu ** damp
+                 self.density_weight *= mu
++                ### per-region rebalance: regions already above the stop-overflow
++                ### threshold keep full pressure, relatively lighter regions get
++                ### their weight scaled down toward the global minimum. This
++                ### concentrates density pressure where it matters (reducing
++                ### detours that inflate TNS) without loosening global balance.
++                try:
++                    if self.density_weight.numel() > 1:
++                        dw = self.density_weight
++                        dw_min = dw.min()
++                        dw_max = dw.max()
++                        if dw_max > dw_min:
++                            # normalized position in [0,1]; heavier regions stay 1
++                            rel = (dw - dw_min) / (dw_max - dw_min)
++                            # light regions (rel near 0) scale toward 0.85,
++                            # heavy regions (rel near 1) stay at 1.0
++                            scale = 0.85 + 0.15 * rel
++                            self.density_weight = dw * scale
++                except Exception:
++                    pass
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
+             assert self.quad_penalty == True, logging.error("density weight update based on overflow only works for quadratic density penalty")

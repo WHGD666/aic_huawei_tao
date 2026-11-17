@@ -1,0 +1,14 @@
+diff --git a/Place-LoL/dreamplace/PlaceObj.py b/Place-LoL/dreamplace/PlaceObj.py
+index 44725b3..5a311e3 100755
+--- a/Place-LoL/dreamplace/PlaceObj.py
++++ b/Place-LoL/dreamplace/PlaceObj.py
+@@ -846,6 +846,9 @@ class PlaceObj(nn.Module):
+                     mu = UPPER_PCOF * torch.pow(
+                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
+                             min=LOWER_PCOF, max=UPPER_PCOF)
++                # conservative damping: avoid density-weight overshoot so cells
++                # spread more uniformly and leave buffer room for timing repair
++                mu = torch.pow(mu, 0.85)
+                 self.density_weight *= mu
+ 
+         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):

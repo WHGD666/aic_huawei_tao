@@ -1,0 +1,40 @@
+{
+ "id": "c014",
+ "parent": "c011",
+ "hypothesis": "The parent relaxes the *global* density weight but the per-bin density penalty is still driven by a single scalar `density_weight`; the TNS cost comes from a few over-dense bins forcing detours. Scaling the density weight per-bin (using the preconditioner's per-region `density_weight` vector) so already-congested regions get relatively more pressure while light regions relax would reduce detours and moderate violations broadly without changing the global balance.",
+ "expected_effect": "",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906266.6739917,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:legalization overlap",
+  "bp_fe-ng45/1003:KeyError in partition",
+  "bp-ng45/1001:legalization overlap",
+  "bp-ng45/1002:HBT min-spacing violation",
+  "bp-ng45/1003:legalization overlap"
+ ],
+ "analysis": "Invalid: mixed legality (legalization overlap, HBT min-spacing), crash (KeyError in partition), and timeout failures. Systematic across all seeds of both bp_fe-ng45 and bp-ng45 cases, so the candidate says nothing about the hypothesis. Likely the per-bin density vector is malformed or misindexed (KeyError) and over-aggressive per-region pressure drives overlaps/spacing violations. To make it legal: validate the per-region `density_weight` vector shape/indexing against bins, clamp per-bin scaling to a bounded range, and add a legality-repair/rollback guard before evaluating.",
+ "llm_cost_cny": 0.0048262,
+ "eval_wall_s": 9.250640869140625e-05,
+ "tags": [
+  "build_update_density_weight",
+  "precondition_op",
+  "density_weight",
+  "update_mask",
+  "stop_overflow",
+  "density_quad_coeff",
+  "gamma",
+  "target_density"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20483
+}

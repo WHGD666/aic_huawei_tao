@@ -1,0 +1,34 @@
+{
+ "id": "c015",
+ "parent": "c013",
+ "hypothesis": "The parent's density relaxation is gated only on *global* overflow, but the TNS cost comes from cells being pushed into *locally* congested bins; making the HPWL-driven density relaxation conditional on the *worst-region* density (not just aggregate overflow) — i.e. relax the density weight only when both total overflow is non-increasing AND the maximum per-bin density is not growing — keeps density pressure where it is actually needed without starving wirelength globally.",
+ "expected_effect": "WNS slightly better or neutral, TNS better (fewer congestion-driven detours in hot regions), overflow flat-to-lower, runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906288.388117,
+ "status": "evaluated",
+ "gate_report": "OK",
+ "score_total": 0.27040603980973255,
+ "score_robust": 0.05717126127665401,
+ "per_case": {
+  "bp_fe-ng45": 0.10833727293034025,
+  "bp-ng45": 0.1182024314193157,
+  "ariane133-ng45": 0.04386633546007659
+ },
+ "all_valid": true,
+ "fail_reasons": [],
+ "analysis": "The hypothesis held: gating density relaxation on worst-region density improved all three cases (total +0.270, robust +0.057, all valid). Gains concentrate in TNS (bp-ng45 +11.4%, bp_fe-ng45 +13.7%) with WNS also up, consistent with the mechanism—retaining density pressure in locally congested bins stops cells being displaced into already-tight regions, reducing the TNS-driving pushes without globally starving wirelength. ariane133-ng45 moved least (+0.044), plausibly because its overflow (~117) is already high, leaving less headroom. Next step: sweep the worst-region density growth threshold (e.g., allow small positive growth vs. strict non-growth) to test sensitivity and confirm the effect isn't threshold-specific.",
+ "llm_cost_cny": 0.0068538,
+ "eval_wall_s": 0.00014591217041015625,
+ "tags": [
+  "PlaceObj.update_density_weight",
+  "cur_metric.density",
+  "PlaceObj.initialize_density_weight",
+  "update_density_weight_op_overflow",
+  "NonLinearPlace.__call__"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21590
+}

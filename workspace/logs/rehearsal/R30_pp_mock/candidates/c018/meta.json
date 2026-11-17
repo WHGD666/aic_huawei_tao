@@ -1,0 +1,37 @@
+{
+ "id": "c018",
+ "parent": "c012",
+ "hypothesis": "The parent relaxes the density weight only when *global* overflow is not rising, but TNS cost comes from *localized* hotspots — so gate the relaxation on the worst-region (per-bin) density instead of the global overflow, keeping full density pressure where local density is high while letting the wirelength/timing regime breathe elsewhere.",
+ "expected_effect": "TNS improves further (fewer local congestion detours on critical nets), WNS slightly up, overflow stays controlled (~80–110), runtime unchanged.",
+ "files_changed": [
+  "Place-LoL/dreamplace/PlaceObj.py"
+ ],
+ "phase": "structural",
+ "created_at": 1794906308.169005,
+ "status": "invalid",
+ "gate_report": "OK",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": false,
+ "fail_reasons": [
+  "bp_fe-ng45/1001:stage timeout",
+  "bp_fe-ng45/1002:stage timeout",
+  "bp_fe-ng45/1003:legalization overlap",
+  "bp-ng45/1001:KeyError in partition",
+  "bp-ng45/1002:legalization overlap",
+  "bp-ng45/1003:stage timeout"
+ ],
+ "analysis": "Invalid: mixed legality (legalization overlap), crash (KeyError in partition), and timeout failures, spanning all seeds of both cases — systematic, not sporadic. This candidate says nothing about the hypothesis. To make the idea legal: fix the partition KeyError (likely missing per-bin density field), add timeout headroom or cheaper per-bin density queries, and resolve legalization overlap by tightening density pressure near hotspots before relaxation. Then re-run all seeds.",
+ "llm_cost_cny": 0.006551,
+ "eval_wall_s": 0.00010228157043457031,
+ "tags": [
+  "build_update_density_weight",
+  "update_density_weight_op_hpwl",
+  "cur_metric.density",
+  "density_weight",
+  "PlaceObj"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 21225
+}

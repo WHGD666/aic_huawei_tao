@@ -1,0 +1,30 @@
+{
+ "id": "c008",
+ "parent": null,
+ "hypothesis": "The graph-cut partitioner's swap-gain is computed with unweighted adjacency, so timing-critical cut edges cost the same as non-critical ones; feeding the graph builder's edge weights (criticality) into the adjacency used by `_compute_swap_gain` and `_compute_cut_weight` will bias the partition toward keeping critical nets intra-tier, reducing cross-tier detours and TNS.",
+ "expected_effect": "TNS improves modestly across all circuits (fewer critical cross-tier nets); WNS small improvement; overflow unchanged or slightly better; runtime unchanged.",
+ "files_changed": [],
+ "phase": "probe",
+ "created_at": 1794906230.0920308,
+ "status": "gate_failed",
+ "gate_report": "ERROR: no files changed",
+ "score_total": null,
+ "score_robust": null,
+ "per_case": {},
+ "all_valid": null,
+ "fail_reasons": [
+  "ERROR: no files changed"
+ ],
+ "analysis": "",
+ "llm_cost_cny": 0.005354200000000001,
+ "eval_wall_s": 0.0,
+ "tags": [
+  "GraphCutPartitioner._build_adjacency",
+  "edge_weights",
+  "adjacency",
+  "_compute_swap_gain",
+  "_compute_cut_weight"
+ ],
+ "max_overflow": null,
+ "prompt_chars": 20515
+}

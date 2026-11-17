@@ -1,0 +1,88 @@
+{
+ "candidate_id": "baseline",
+ "wall_s": 0.0,
+ "runs": {
+  "bp_fe-ng45/1001": {
+   "case": "bp_fe-ng45",
+   "seed": 1001,
+   "wns": -0.3605,
+   "tns": -123.60000000000001,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1002": {
+   "case": "bp_fe-ng45",
+   "seed": 1002,
+   "wns": -0.33949999999999997,
+   "tns": -116.39999999999999,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp_fe-ng45/1003": {
+   "case": "bp_fe-ng45",
+   "seed": 1003,
+   "wns": -0.35,
+   "tns": -120.0,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1001": {
+   "case": "bp-ng45",
+   "seed": 1001,
+   "wns": -0.5665000000000001,
+   "tns": -494.40000000000003,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1002": {
+   "case": "bp-ng45",
+   "seed": 1002,
+   "wns": -0.5335,
+   "tns": -465.59999999999997,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "bp-ng45/1003": {
+   "case": "bp-ng45",
+   "seed": 1003,
+   "wns": -0.55,
+   "tns": -480.0,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1001": {
+   "case": "ariane133-ng45",
+   "seed": 1001,
+   "wns": -0.8240000000000001,
+   "tns": -978.5,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1002": {
+   "case": "ariane133-ng45",
+   "seed": 1002,
+   "wns": -0.776,
+   "tns": -921.5,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  },
+  "ariane133-ng45/1003": {
+   "case": "ariane133-ng45",
+   "seed": 1003,
+   "wns": -0.8,
+   "tns": -950.0,
+   "overflow": 120.0,
+   "valid": true,
+   "fail_reason": ""
+  }
+ },
+ "stage_logs": {}
+}
