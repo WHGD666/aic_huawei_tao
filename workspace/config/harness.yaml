@@ -50,3 +50,13 @@ gate:
     - "\\btns\\s*="
   run_pyflakes: true
   smoke_test_cmd: ""                  # 若官方允许离线小算例冒烟，填命令
+
+# 消融开关（全部默认开；tools/ablate.py 逐个关掉做对比）
+ablation:
+  precheck: true            # SEARCH 必须来自展示过的代码 / 真实文件唯一匹配
+  boost_parent_lines: true  # 父代改动行强制进展示窗口
+  probe_rotation: true      # probe 阶段按旋钮菜单轮换检索焦点
+  analysis_in_history: true # Analyzer 结论进历史摘要
+  problem_profile: true     # 问题画像（关掉则只给 WNS/TNS 数字）
+  knowledge_block: true     # 系统提示里的领域知识块
+  fix_round: true           # 门禁失败后的 1 次修复机会

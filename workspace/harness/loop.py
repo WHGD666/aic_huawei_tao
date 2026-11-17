@@ -155,6 +155,9 @@ class Harness:
         self.proposer = Proposer(self.cb, self.task)
         self.code_chars = int(cfg["llm"].get("code_chars", 6000))
         self.code_chars_min = 2500
+        self.abl = {k: bool(v) for k, v in (cfg.get("ablation") or {}).items()}
+        self.proposer.use_knowledge = self.abl.get("knowledge_block", True)
+        self.proposer.rebuild_system()
 
         self.baseline_eval: Optional[EvalResult] = None
         self.profile: str = ""
@@ -190,7 +193,7 @@ class Harness:
         (self.store.root / "baseline").mkdir(exist_ok=True)
         self.store.save_eval("baseline", self.baseline_eval.to_dict())
         profs = self.baseline_eval.raw.get("profiles") if isinstance(self.baseline_eval.raw, dict) else None
-        if profs:
+        if profs and self.abl.get("problem_profile", True):
             from .profile import RunProfile, render_profile
             rps = []
             for d in profs.values():
@@ -212,7 +215,8 @@ class Harness:
                 t = sum(r.tns for r in rs) / len(rs)
                 ov = sum(r.overflow for r in rs) / len(rs)
                 lines.append(f"  {c}: WNS={w:.3f} TNS={t:.1f} overflow={ov:.0f}")
-            lines.append("Notes: TNS weight 0.6; prefer mechanisms that generalize across all cases.")
+            if self.abl.get("problem_profile", True):
+                lines.append("Notes: TNS weight 0.6; prefer mechanisms that generalize across all cases.")
             self.profile = "\n".join(lines)
         self.log("baseline loaded\n" + self.profile)
 
@@ -276,7 +280,7 @@ class Harness:
         """返回 (changed_files, errors, gate_report, patch)。errors 非空表示解析/应用失败。"""
         if prop.parse_errors:
             return {}, list(prop.parse_errors), None, ""
-        pre = self.proposer.precheck(prop, shown_chunks)
+        pre = self.proposer.precheck(prop, shown_chunks) if self.abl.get("precheck", True) else []
         if pre:
             return {}, pre, None, ""
         base_for_edit = work if parent_id else self.base_root
@@ -339,7 +343,7 @@ class Harness:
         parent_id = self.selector.choose_parent(phase)
         parent_patch = (self.store.dir(parent_id) / "candidate.patch").read_text(encoding="utf-8") if parent_id else None
         parent_meta = self.store.get(parent_id) if parent_id else None
-        if phase == "probe":
+        if phase == "probe" and self.abl.get("probe_rotation", True):
             keywords = self.PROBE_KEYWORDS[(idx - 1) % len(self.PROBE_KEYWORDS)]
         else:
             keywords = (parent_meta.tags if parent_meta and parent_meta.tags else self.DEFAULT_KW)
@@ -359,8 +363,9 @@ class Harness:
         round_cost = 0.0
         try:
             # ① 提出修改
-            boost = patch_changed_lines(parent_patch) if parent_patch else None
-            msgs, shown = self.proposer.build_messages(phase, self.profile, self.selector.history_digest(), parent_patch, keywords,
+            boost = patch_changed_lines(parent_patch) if (parent_patch and self.abl.get("boost_parent_lines", True)) else None
+            hist = self.selector.history_digest(with_analysis=self.abl.get("analysis_in_history", True))
+            msgs, shown = self.proposer.build_messages(phase, self.profile, hist, parent_patch, keywords,
                                                       code_chars=self.code_chars, boost_lines=boost)
             meta.prompt_chars = sum(len(m["content"]) for m in msgs)
             text, c = self._chat(msgs, self.lcfg["temperature_propose"], self.lcfg["max_tokens_propose"], "propose", cid)
@@ -371,10 +376,10 @@ class Harness:
 
             # ② 生成代码 + ③ 检查（最多 1 次修复）
             changed, errs, rep, patch = self._apply_and_gate(prop, work, parent_id, shown)
-            if errs or (rep and not rep.ok):
+            if (errs or (rep and not rep.ok)) and self.abl.get("fix_round", True):
                 fb = "\n".join(errs) if errs else rep.text()
                 self.log(f"  gate/apply failed -> fix attempt: {fb[:200]}")
-                msgs2, shown2 = self.proposer.build_messages(phase, self.profile, self.selector.history_digest(), parent_patch, keywords,
+                msgs2, shown2 = self.proposer.build_messages(phase, self.profile, hist, parent_patch, keywords,
                                                             feedback_for_fix=fb, previous_response=text, code_chars=self.code_chars,
                                                             boost_lines=boost)
                 text, c = self._chat(msgs2, self.lcfg["temperature_fix"], self.lcfg["max_tokens_fix"], "fix", cid)

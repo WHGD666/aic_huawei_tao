@@ -88,11 +88,16 @@ class Proposer:
         self.cb = codebase
         self.task = task
         self.last_chunks = []
+        self.use_knowledge = True
+        self.rebuild_system()
+
+    def rebuild_system(self) -> None:
+        know = _load("knowledge.md") if (self.use_knowledge and (PROMPTS_DIR / "knowledge.md").exists()) else ""
         self.system = (
             _load("system.md")
-            .replace("{TASK}", task)
-            .replace("{KNOWLEDGE}", _load("knowledge.md") if (PROMPTS_DIR / "knowledge.md").exists() else "")
-            .replace("{OUTLINE}", codebase.outline())
+            .replace("{TASK}", self.task)
+            .replace("{KNOWLEDGE}", know)
+            .replace("{OUTLINE}", self.cb.outline())
         )
 
     def _phase_guide(self, phase: str) -> str:
