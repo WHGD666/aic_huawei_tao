@@ -1,4 +1,5 @@
 # ---- secrets ----
+.env
 workspace/.env
 *.key
 
