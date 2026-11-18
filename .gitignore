@@ -3,8 +3,8 @@
 workspace/.env
 *.key
 
-# ---- environments (never commit; rebuilt by workspace/env/*.bat) ----
-env/
+# ---- local environment data (never commit; rebuilt by workspace/env/*.bat) ----
+/env/
 !env/conda/.gitkeep
 !env/docker/.gitkeep
 third_party/
