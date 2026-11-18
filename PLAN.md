@@ -270,7 +270,7 @@ F:\huawei_aic_tao\task1\
 
 ## 8. 需要你确认 / 提供的事项
 
-**已解决（截至 2026-11-18）**：模型名 = `deepseek-flash`；API 可达；Open3DBench 仓库 = `lamda-bbo/Open3DBench`；两层建模方式已确认；Docker 已启动，`shiyunqi/open3dbench:eval` 镜像和 `binaries.tar.gz` 已在本机，公开 `bp_fe` OpenROAD LoL 诊断已跑；本机 NVIDIA RTX 4060 Laptop GPU（驱动 581.57，8 GiB）与 Git 均可用（见 `docs/m2_diagnostic_2026-11-18.md`）。
+**已解决（截至 2026-11-18）**：模型名 = `deepseek-flash`；API 可达；Open3DBench 仓库 = `lamda-bbo/Open3DBench`；两层建模方式已确认；Docker 的 eval / place 镜像和 `binaries.tar.gz` 已在本机，公开 `bp_fe` OpenROAD LoL 诊断已跑；容器 GPU 透传和 PyTorch CUDA 可用，Docker 数据在 F 盘；本机 Git 可用（见 `docs/m2_diagnostic_2026-11-18.md`）。
 
 **仍待你 / 组委会**：
 1. **官方开发容器**与**评估接口文档**（如何提交候选、返回什么、本地冒烟是否计入 30 次）

@@ -6,6 +6,7 @@
 
 - 源码：Open3DBench `e6d23148beed101b7741960f8aa967544259b0df`，出处 `third_party/open3dbench_ref/SOURCE_COMMIT.txt`。
 - 镜像：`shiyunqi/open3dbench:eval`，本机 image ID `sha256:32ab6667ca2a0708a6462b44a07cf6092828c3263f8a606c0184f31490e02235`。
+- 布局镜像：`shiyunqi/open3dbench:place` 也已拉取，image ID `sha256:69192fe510ab56878c0cbb0e275c76f40ab6f7a7e9dc112c4b9c3f23cf62d04e`（本机约 23.3 GB）。`docker run --gpus all` 内的 PyTorch 1.7.1 报告 `cuda=True`，识别 RTX 4060 Laptop GPU；Docker WSL 数据目录在 `F:\docker\DockerDesktopWSL`。
 - 数据：Place-LoL README 中的 `binaries.tar.gz`，SHA256 `B7409BF46C99E7A2AD5CDF9ED807C1ADE5A787D6CE33865B15FBC3FD7129AD9B`；使用 `binaries/converted_output/default/tcad25/bp_fe.def`。压缩包内的 202 个普通文件已校验解出；Windows 未创建的 12 个相对符号链接不参与本次 DEF 输入。
 - 运行：`workspace/env/07_run_lol_bpfe.bat` 执行 `make DESIGN_CONFIG=designs/nangate45_3D/bp_fe_top/config_lol.mk do-lolflow`；`cd workspace; python tools/collect_m2.py` 收集日志。原始输出保存在本机忽略目录 `workspace/tests/samples/real_bp_fe/` 和 `workspace/logs/m2_bpfe_lol.log`，不入 Git。
 - 首次运行脚本在 `do-lolflow` 结束后额外调用了公开仓库的 `do-hotspot`，后者因缺 `HotSpot/examples/thermal/run.sh` 失败。现已把脚本限定为 OpenROAD LoL 后端；该版本未重复跑 47 分钟的全流程。温度分析不属于题面计分环节。
