@@ -31,6 +31,12 @@ __pycache__/
 # ---- misc ----
 *.vhdx
 *.tar
+*.tar.gz
 *.log
 .DS_Store
 Thumbs.db
+
+# Organizer-provided contest kit and copied notices stay local.
+/1/材料补全/
+/1/关于离线专家知识注入的说明.pdf
+/关于离线专家知识注入的说明.pdf
