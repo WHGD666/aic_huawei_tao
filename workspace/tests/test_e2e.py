@@ -184,6 +184,7 @@ def test_meta_exists_even_if_llm_crashes(tmp_path):
     h.run()
     metas = h.store.all()
     assert metas and (h.store.dir(metas[0].id) / "meta.json").exists()
+    assert all(m.status == "error" and m.fail_reasons for m in metas)
     assert (h.store.root / "lineage.jsonl").read_text(encoding="utf-8").count('"create"') >= 1
     assert h.budget.state.evaluations == 0
 
@@ -250,3 +251,24 @@ def test_work_dir_ignores_evaluator_artifacts(tmp_path):
     child = [m for m in h.store.all() if m.parent and m.status == "evaluated"]
     assert child, [ (m.id, m.status, m.gate_report[:60]) for m in h.store.all()]
     assert all("eval_result" not in f and "__pycache__" not in f for f in child[0].files_changed)
+
+
+def test_parent_patch_rebuilds_without_parent_work(tmp_path):
+    h = make_harness(tmp_path, [GOOD_PROPOSAL], max_evals=1)
+    parent = h.run()
+    assert parent is not None
+    shutil.rmtree(h.run_dir / "work" / parent.id)
+    rebuilt = h._prepare_work("c999", parent.id)
+    assert "TIMING_WEIGHT = 0.5" in (rebuilt / "partition" / "gnn_partition.py").read_text()
+
+
+def test_partial_run_preserves_final_reserve(tmp_path):
+    h = make_harness(tmp_path, varied(2), max_evals=4)
+    h.budget.reserve_evaluations = 1
+    h.selector.phase_plan = {"probe": 2, "structural": 1}
+    h.run(max_rounds=2)
+    assert h.budget.state.evaluations == 2
+    assert all(m.phase != "final" for m in h.store.all())
+    h.run(max_rounds=8)
+    assert h.budget.state.evaluations == 4
+    assert any(m.phase == "final" for m in h.store.evaluated())

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 import subprocess
 import time
@@ -128,10 +129,11 @@ class OfficialEvaluator(Evaluator):
     返回 json 形如 {"runs": {"case/seed": {"wns":..,"tns":..,"overflow":..,"valid":..,"log":..}}}
     """
 
-    def __init__(self, cases, seeds, cmd: str, baseline_json: Optional[Path] = None):
+    def __init__(self, cases, seeds, cmd: str, baseline_json: Optional[Path] = None, full_flow: bool = False):
         super().__init__(cases, seeds)
         self.cmd = cmd
         self.baseline_json = baseline_json
+        self.full_flow = full_flow
 
     def baseline(self) -> EvalResult:
         if self.baseline_json and self.baseline_json.exists():
@@ -141,7 +143,7 @@ class OfficialEvaluator(Evaluator):
     def evaluate(self, candidate_id: str, workdir: Path) -> EvalResult:
         out = workdir / "eval_result.json"
         t0 = time.time()
-        subprocess.run(
+        proc = subprocess.run(
             self.cmd.format(workdir=str(workdir), out=str(out)),
             shell=True, check=False,
         )
@@ -149,6 +151,10 @@ class OfficialEvaluator(Evaluator):
             runs = {f"{c}/{s}": RunMetrics(c, s, 0, 0, valid=False, fail_reason="no result file") for c in self.cases for s in self.seeds}
             return EvalResult(candidate_id, runs, wall_s=time.time() - t0)
         res = self._parse(candidate_id, json.load(open(out, encoding="utf-8")))
+        if proc.returncode != 0:
+            for run in res.runs.values():
+                run.valid = False
+                run.fail_reason = f"evaluator command exited {proc.returncode}"
         res.wall_s = time.time() - t0
         return res
 
@@ -156,9 +162,25 @@ class OfficialEvaluator(Evaluator):
         runs, logs = {}, {}
         for key, r in d.get("runs", {}).items():
             case, seed = key.split("/")
-            runs[key] = RunMetrics(case, int(seed), float(r.get("wns", 0)), float(r.get("tns", 0)),
-                                   overflow=float(r.get("overflow", 0)), valid=bool(r.get("valid", True)),
-                                   fail_reason=str(r.get("fail_reason", "")))
+            def metric(name: str, default: float = math.nan) -> float:
+                try:
+                    return float(r[name]) if name in r else default
+                except (TypeError, ValueError):
+                    return math.nan
+
+            wns, tns = metric("wns"), metric("tns")
+            overflow = metric("overflow", 0.0 if not self.full_flow else math.nan)
+            bad = [name for name, value in (("wns", wns), ("tns", tns)) if not math.isfinite(value)]
+            if self.full_flow and (not math.isfinite(overflow) or overflow < 0):
+                bad.append("overflow")
+            valid = r.get("valid", True) is True and not bad
+            reason = str(r.get("fail_reason", "")) or (f"missing/invalid {', '.join(bad)}" if bad else "")
+            if not valid and not reason:
+                reason = "official evaluator marked invalid"
+            runs[key] = RunMetrics(case, int(seed), wns if math.isfinite(wns) else 0.0,
+                                   tns if math.isfinite(tns) else 0.0,
+                                   overflow=overflow if math.isfinite(overflow) else 0.0,
+                                   valid=valid, fail_reason=reason)
             logs[key] = str(r.get("log", ""))
         return EvalResult(cid, runs, logs, raw=d)
 
@@ -191,8 +213,12 @@ class LogDirEvaluator(Evaluator):
     def evaluate(self, candidate_id: str, workdir: Path) -> EvalResult:
         t0 = time.time()
         out_root = self.results_root / candidate_id
-        subprocess.run(self.cmd.format(workdir=str(workdir), out=str(out_root)), shell=True, check=False)
+        proc = subprocess.run(self.cmd.format(workdir=str(workdir), out=str(out_root)), shell=True, check=False)
         res = self._collect(candidate_id, out_root)
+        if proc.returncode != 0:
+            for run in res.runs.values():
+                run.valid = False
+                run.fail_reason = f"evaluator command exited {proc.returncode}"
         res.wall_s = time.time() - t0
         return res
 
@@ -229,10 +255,15 @@ class LogDirEvaluator(Evaluator):
                 if self.full_flow:
                     cg = parse_congestion(grt)
                     ov = cg.total_overflow if cg else float("nan")
-                valid = status.ok and wns is not None and tns is not None and not (self.full_flow and ov != ov)
-                reason = status.fail_reason or ("missing wns/tns" if (wns is None or tns is None) else "") or ("missing overflow" if (self.full_flow and ov != ov) else "")
-                runs[key] = RunMetrics(c, s, to_ns(wns, unit) or 0.0, to_ns(tns, unit) or 0.0,
-                                       overflow=0.0 if ov != ov else ov, valid=valid, fail_reason=reason)
+                wns_ns, tns_ns = to_ns(wns, unit), to_ns(tns, unit)
+                timing_ok = all(v is not None and math.isfinite(v) for v in (wns_ns, tns_ns))
+                overflow_ok = not self.full_flow or (math.isfinite(ov) and ov >= 0)
+                valid = status.ok and timing_ok and overflow_ok
+                reason = status.fail_reason or ("missing/invalid wns/tns" if not timing_ok else "") or (
+                    "missing/invalid overflow" if not overflow_ok else "")
+                runs[key] = RunMetrics(c, s, wns_ns if wns_ns is not None and math.isfinite(wns_ns) else 0.0,
+                                       tns_ns if tns_ns is not None and math.isfinite(tns_ns) else 0.0,
+                                       overflow=ov if math.isfinite(ov) else 0.0, valid=valid, fail_reason=reason)
                 logs[key] = f"[metrics from {src}]\n" + (flow or sta)[-1500:]
                 prof = build_run_profile(c, s, sta, rep, grt, part).to_dict()
                 if om:

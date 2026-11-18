@@ -161,6 +161,7 @@ class Gate:
         self.denied: List[str] = wl.get("denied", [])
         # per_design: 这些 glob 匹配"按算例一份"的文件；候选改了其中一个就必须对所有同类文件做相同改动
         self.per_design: List[str] = wl.get("per_design", [])
+        self._per_design_cache: Dict[tuple[str, str], List[str]] = {}
         self.forbidden = [re.compile(p, re.IGNORECASE) for p in forbidden_patterns]
         self.run_pyflakes = run_pyflakes
         self.smoke_cmd = smoke_cmd
@@ -215,7 +216,7 @@ class Gate:
                 rep.errors.append(f"file explicitly denied: {f}")
 
     _PDK_RE = re.compile(r"(?<![A-Za-z0-9_])(ng45|nangate45|asap7|sky130|gf180)(?![A-Za-z0-9_])", re.I)
-    _COND_RE = re.compile(r"==|!=|\bif\b|\belif\b|\bin\b|\bmatch\b|\bcase\b|\bswitch\b|[{[]\s*['\"]")
+    _COND_RE = re.compile(r"==|!=|\b(?:if|elif|match|case|switch|ifeq|ifneq)\b|[{[]\s*['\"]")
 
     def _check_case_names(self, patch: str, rep: GateReport) -> None:
         """新增行里出现训练/验证算例名或其电路名 token（bp_fe / ariane133 / swerv ...）-> 视为按算例特判，硬错误。
@@ -279,13 +280,14 @@ class Gate:
     def _per_design_universe(self, g: str) -> List[str]:
         if self.baseline_root is None or not self.baseline_root.exists():
             return []
-        out = []
-        for p in self.baseline_root.rglob("*"):
-            if p.is_file():
-                rel = str(p.relative_to(self.baseline_root)).replace("\\", "/")
-                if glob_match(rel, g):
-                    out.append(rel)
-        return out
+        root = self.baseline_root.resolve()
+        key = (str(root), g)
+        if key not in self._per_design_cache:
+            self._per_design_cache[key] = sorted(
+                str(p.relative_to(root)).replace("\\", "/")
+                for p in root.glob(g) if p.is_file()
+            )
+        return self._per_design_cache[key]
 
     def _check_forbidden(self, patch: str, rep: GateReport) -> None:
         for ln in patch.splitlines():

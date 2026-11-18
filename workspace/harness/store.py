@@ -28,7 +28,7 @@ class CandidateMeta:
     files_changed: List[str]
     phase: str                            # probe | structural | combine | final
     created_at: float = field(default_factory=time.time)
-    status: str = "proposed"              # proposed | gate_failed | evaluated | invalid | discarded
+    status: str = "proposed"              # proposed | error | gate_failed | evaluated | invalid | discarded
     gate_report: str = ""
     score_total: Optional[float] = None
     score_robust: Optional[float] = None
@@ -53,13 +53,21 @@ class CandidateStore:
 
     # ---------- CRUD ----------
     def new_id(self) -> str:
-        """取 max(已有 id)+1，不按计数——删过目录也不会撞 id。"""
+        """取已存候选与血统事件中的最大 id + 1，避免删除末尾目录后复用 id。"""
         mx = 0
         for cid in list(self._metas) + [p.name for p in self.root.glob("c[0-9]*")]:
             try:
                 mx = max(mx, int(cid[1:]))
             except ValueError:
                 pass
+        if self.lineage.exists():
+            for line in self.lineage.read_text(encoding="utf-8").splitlines():
+                try:
+                    cid = json.loads(line).get("id", "")
+                    if cid.startswith("c"):
+                        mx = max(mx, int(cid[1:]))
+                except (ValueError, AttributeError, json.JSONDecodeError):
+                    continue
         return f"c{mx + 1:03d}"
 
     def write_patch(self, cid: str, patch_text: str) -> None:

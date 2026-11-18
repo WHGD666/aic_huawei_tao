@@ -43,7 +43,7 @@ conda activate F:\huawei_aic_tao\task1\env\conda\tao
 cd /d F:\huawei_aic_tao\task1\workspace
 python tools\check_env.py --net          :: 全绿 + deepseek /models 可达
 python tools\probe_models.py             :: 看模型名，填回 .env 的 DEEPSEEK_MODEL
-python -m pytest tests -q                :: 44 个测试应全部通过（无 pytest 时: python tests\_runner_nopytest.py tests.test_units tests.test_parse tests.test_e2e tests.test_logdir_eval）
+python -m pytest tests -q                :: 54 个测试应全部通过（无 pytest 时: python tests\_runner_nopytest.py tests.test_units tests.test_parse tests.test_e2e tests.test_logdir_eval）
 ```
 
 ## 跑演化循环

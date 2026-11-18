@@ -42,11 +42,32 @@ class Selector:
                 self.record_outcome(m)
 
     def rescale_phase_plan(self, total: int) -> None:
-        """把 phase_plan 按比例缩放到 total 次评估（最后一个阶段吃掉舍入误差）。"""
+        """把 phase_plan 缩放到 total 次评估；小预算仍从 probe 开始。"""
         keys = list(self.phase_plan)
-        old = sum(self.phase_plan.values()) or 1
-        new = {k: max(1, int(round(self.phase_plan[k] * total / old))) for k in keys}
-        new[keys[-1]] += total - sum(new.values())
+        if not keys:
+            return
+        new = {k: 0 for k in keys}
+        positive = [k for k in keys if self.phase_plan[k] > 0]
+        if total <= 0 or not positive:
+            self.phase_plan = new
+            return
+        if total < len(positive):
+            for k in positive[:total]:
+                new[k] = 1
+            self.phase_plan = new
+            return
+        if total == sum(self.phase_plan.values()):
+            return
+        for k in positive:
+            new[k] = 1
+        remaining = total - len(positive)
+        weight = sum(self.phase_plan[k] for k in positive)
+        quotas = {k: remaining * self.phase_plan[k] / weight for k in positive}
+        for k in positive:
+            new[k] += int(quotas[k])
+        leftover = total - sum(new.values())
+        for k in sorted(positive, key=lambda k: -(quotas[k] - int(quotas[k])))[:leftover]:
+            new[k] += 1
         self.phase_plan = new
 
     # ---------- 阶段 ----------

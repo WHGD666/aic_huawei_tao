@@ -57,7 +57,9 @@ def overflow_penalty(overflow: float) -> float:
 
 
 def run_score(base: RunMetrics, cand: RunMetrics, full_flow: bool) -> Optional[float]:
-    if not cand.valid:
+    if (not base.valid or not cand.valid
+            or not all(math.isfinite(v) for v in (base.wns, base.tns, cand.wns, cand.tns))
+            or (full_flow and (not math.isfinite(cand.overflow) or cand.overflow < 0))):
         return None  # 无效结果：题面规定无效，交给上层判定整个候选失效
     s = W_WNS * improvement(base.wns_viol, cand.wns_viol) + W_TNS * improvement(base.tns_viol, cand.tns_viol)
     if full_flow:

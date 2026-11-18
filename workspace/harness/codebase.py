@@ -316,10 +316,10 @@ def _difflib_diff(f: str, a: Path, b: Path) -> str:
 
 
 def patch_fingerprint(patch_text: str) -> str:
-    """去重用：只看 hunk 内容（+/- 行与上下文），忽略 index/mode/行号偏移。"""
+    """去重用：保留文件路径和 hunk 内容，忽略 index/mode/行号偏移。"""
     import hashlib as _h
     keep = [ln for ln in patch_text.splitlines()
-            if not ln.startswith(("diff --git", "index ", "old mode", "new mode", "--- ", "+++ ", "@@"))]
+            if not ln.startswith(("index ", "old mode", "new mode", "--- ", "+++ ", "@@"))]
     return _h.sha256("\n".join(keep).encode("utf-8")).hexdigest()
 
 

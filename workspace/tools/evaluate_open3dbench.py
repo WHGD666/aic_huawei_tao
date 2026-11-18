@@ -99,13 +99,18 @@ def run_placer(o3: Path, case: str, seed: int, method: str, variant: str, placer
     info = CASE_MAP[case]
     nick = info["nick"]
     params = o3 / "Place-LoL" / "test" / f"3D_input_{variant}" / f"{nick}.json"
-    if params.exists() and not dry:
-        set_seed_in_json(params, "random_seed", seed)
     out_def = o3 / "Place-LoL" / "binaries" / "converted_output" / variant / method / f"{nick}.def"
     if placer_cmd:
-        cmd = placer_cmd.format(o3=str(o3), case=case, design=info["design"], nick=nick, seed=seed, method=method,
-                                variant=variant, params=str(params), out_def=str(out_def))
-        rc = run(["bash", "-lc", cmd], o3 / "Place-LoL", env, logfile, dry, timeout)
+        original_params = params.read_bytes() if params.exists() and not dry else None
+        try:
+            if original_params is not None:
+                set_seed_in_json(params, "random_seed", seed)
+            cmd = placer_cmd.format(o3=str(o3), case=case, design=info["design"], nick=nick, seed=seed, method=method,
+                                    variant=variant, params=str(params), out_def=str(out_def))
+            rc = run(["bash", "-lc", cmd], o3 / "Place-LoL", env, logfile, dry, timeout)
+        finally:
+            if original_params is not None:
+                params.write_bytes(original_params)
         if rc != 0:
             log(f"placer failed rc={rc}")
             return None
@@ -155,7 +160,7 @@ def run_backend(o3: Path, case: str, seed: int, task: str, method: str, variant:
         # 用 --task1-repair-timing 让这里在 3_4 之后追加一次 repair_timing（通过 POST_RESIZE_TCL 钩子脚本，不改 resize.tcl）
         tail = ["cp $RESULTS_DIR/my_cts.odb $RESULTS_DIR/3_3_place_gp.odb",
                 "cp $RESULTS_DIR/1_synth.sdc $RESULTS_DIR/2_floorplan.sdc",
-                "make DESIGN_CONFIG=" + cfg + " do-2_6_floorplan_pdn || true",
+                "make DESIGN_CONFIG=" + cfg + " do-2_6_floorplan_pdn",
                 "make DESIGN_CONFIG=" + cfg + " do-3_4_place_resized"]
         if e.get("TASK1_REPAIR_TIMING") == "1":
             hook = flow / "scripts_3D" / "task1_repair_timing.tcl"
@@ -177,7 +182,7 @@ def run_backend(o3: Path, case: str, seed: int, task: str, method: str, variant:
     else:
         tail = ["cp $RESULTS_DIR/my_cts.odb $RESULTS_DIR/3_3_place_gp.odb",
                 "cp $RESULTS_DIR/1_synth.sdc $RESULTS_DIR/2_floorplan.sdc",
-                "make DESIGN_CONFIG=" + cfg + " do-2_6_floorplan_pdn || true",
+                "make DESIGN_CONFIG=" + cfg + " do-2_6_floorplan_pdn",
                 "make DESIGN_CONFIG=" + cfg + " do-3_4_place_resized do-3_5_place_dp do-3_place do-3_place.sdc",
                 "make DESIGN_CONFIG=" + cfg + " do-cts",
                 "make DESIGN_CONFIG=" + cfg + " do-5_1_grt"]
@@ -200,7 +205,7 @@ def collect(log_dir: Path, results_dir: Path, out_case_seed: Path, stage_json: s
     # LogDirEvaluator 以 <metric_stage>.json 为首选：给采样点 json 一个固定别名
     src = log_dir / stage_json
     if src.exists():
-        alias = "placeopt.json" if "resized" in stage_json else "globalroute.json"
+        alias = "globalroute.json" if "grt" in stage_json else "placeopt.json"
         shutil.copy2(src, out_case_seed / alias)
     (out_case_seed / "flow.log").write_text(f"exit code {rc}\n" + ("" if rc == 0 else "[ERROR] flow failed\n"), encoding="utf-8")
     # 物理设计结果（提交要求：切分方案、上下层布局）
@@ -232,8 +237,14 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
 
     workdir, out, o3src = Path(a.workdir), Path(a.out), Path(a.o3)
+    if not workdir.is_dir():
+        print(f"candidate workdir not found at {workdir}", file=sys.stderr)
+        return 2
     if not o3src.exists():
         print(f"Open3DBench not found at {o3src}", file=sys.stderr)
+        return 2
+    if a.inplace and not a.dry_run and any(p.is_file() and p.name != "candidate.patch" for p in workdir.rglob("*")):
+        print("--inplace is only safe for an empty candidate; use the isolated copy for edited candidates", file=sys.stderr)
         return 2
     cases = [c.strip() for c in a.cases.split(",") if c.strip()]
     seeds = [int(s) for s in a.seeds.split(",") if s.strip()]
@@ -285,7 +296,7 @@ def main(argv=None) -> int:
             log(f"{key} done rc={r['rc']} in {time.time() - t0:.0f}s")
     summary["finished"] = time.time()
     (out / "eval_summary.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
-    if tmp and not a.keep and not a.dry_run:
+    if tmp and not a.keep:
         shutil.rmtree(tmp, ignore_errors=True)
     return 0
 

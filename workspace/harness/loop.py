@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -99,9 +100,16 @@ class Harness:
         # ---- 预算 ----
         pricing = Pricing(WS / "config" / "pricing.yaml")
         b = cfg["budget"]
-        self.budget = Budget(b["max_evaluations"], b["max_cost_cny"], pricing,
+        max_evaluations = int(b["max_evaluations"])
+        if max_evaluations < 0:
+            raise ConfigError("budget.max_evaluations must be non-negative")
+        requested_reserve = int(b.get("reserve_evaluations", 0))
+        reserve = min(max(requested_reserve, 0), max(0, max_evaluations - 1))
+        self.budget = Budget(max_evaluations, b["max_cost_cny"], pricing,
                              state_file=self.run_dir / "budget.json",
-                             reserve_evaluations=b.get("reserve_evaluations", 0))
+                             reserve_evaluations=reserve)
+        if reserve != requested_reserve:
+            self.log(f"WARNING reserve_evaluations adjusted from {requested_reserve} to {reserve} for this budget")
         self.per_round_cap = b.get("per_round_cost_cap_cny", 0.35)
         self.max_consecutive_gate_failures = int(b.get("max_consecutive_gate_failures", 6))
 
@@ -135,7 +143,8 @@ class Harness:
                                                  WS / "results" / self.task, WS / "baseline" / "results" / self.task,
                                                  full_flow=self.full_flow)
             else:
-                self.evaluator = OfficialEvaluator(e["cases"], e["seeds"], e["official_cmd"], WS / "baseline" / "baseline_eval.json")
+                self.evaluator = OfficialEvaluator(e["cases"], e["seeds"], e["official_cmd"],
+                                                   WS / "baseline" / "baseline_eval.json", full_flow=self.full_flow)
         else:
             raise ConfigError(f"unknown evaluator.mode {mode!r}")
 
@@ -177,6 +186,11 @@ class Harness:
         except Exception:
             pass
 
+    def __del__(self):
+        log_f = getattr(self, "log_f", None)
+        if log_f is not None and not log_f.closed:
+            log_f.close()
+
     def _chat(self, msgs, temperature, max_tokens, tag, cid: Optional[str] = None):
         if not self.budget.can_call_llm():
             raise LLMError("cost budget exhausted")
@@ -190,6 +204,12 @@ class Harness:
     # ---------- init ----------
     def init_baseline(self) -> None:
         self.baseline_eval = self.evaluator.baseline()
+        expected = {f"{c}/{s}" for c in self.evaluator.cases for s in self.evaluator.seeds}
+        if set(self.baseline_eval.runs) != expected:
+            raise ConfigError("baseline cases/seeds do not match the configured training set")
+        if any(not r.valid or not all(math.isfinite(v) for v in (r.wns, r.tns))
+               for r in self.baseline_eval.runs.values()):
+            raise ConfigError("baseline contains missing, invalid, or non-finite timing metrics")
         (self.store.root / "baseline").mkdir(exist_ok=True)
         self.store.save_eval("baseline", self.baseline_eval.to_dict())
         profs = self.baseline_eval.raw.get("profiles") if isinstance(self.baseline_eval.raw, dict) else None
@@ -243,24 +263,27 @@ class Harness:
         return work
 
     def _apply_patch(self, patch: Path, work: Path, parent_id: str) -> None:
-        """用 git apply 把父代 patch 打到 work；失败则回退到复制父代 work（并只取白名单文件）。"""
-        ok = False
+        """把父代 patch 打到工作副本；没有 git 时才使用父代工作副本。"""
         if self.have_git:
-            r = subprocess.run(["git", "apply", "--unsafe-paths", "--directory", str(work), str(patch)],
-                               capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(work))
-            ok = r.returncode == 0
-            if not ok:
-                self.log(f"  git apply of parent patch failed ({r.stderr.strip()[:120]}); falling back to parent work copy")
-        if not ok:
-            pw = self.run_dir / "work" / parent_id
-            if not pw.exists():
-                raise RuntimeError(f"cannot rebuild parent {parent_id}: patch does not apply and work dir missing")
-            for p in pw.rglob("*"):
-                if p.is_file():
-                    rel = str(p.relative_to(pw)).replace("\\", "/")
-                    if self.cb._is_allowed(rel):
-                        (work / rel).parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy2(p, work / rel)
+            # work/ 可能位于本仓库的 ignored 子目录。让 git 在 work 内按独立目录工作，
+            # 否则 git apply 会返回 0 却报告 "Skipped patch"，父代修改实际没有应用。
+            env = os.environ.copy()
+            env["GIT_CEILING_DIRECTORIES"] = str(work.parent.resolve())
+            r = subprocess.run(["git", "apply", "--verbose", str(patch.resolve())],
+                               capture_output=True, text=True, encoding="utf-8", errors="replace",
+                               cwd=str(work), env=env)
+            if r.returncode != 0 or "Skipped patch" in r.stderr:
+                raise RuntimeError(f"cannot apply parent {parent_id} patch: {r.stderr.strip()[:200]}")
+            return
+        pw = self.run_dir / "work" / parent_id
+        if not pw.exists():
+            raise RuntimeError(f"cannot rebuild parent {parent_id}: git unavailable and work dir missing")
+        for p in pw.rglob("*"):
+            if p.is_file():
+                rel = str(p.relative_to(pw)).replace("\\", "/")
+                if self.cb._is_allowed(rel):
+                    (work / rel).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(p, work / rel)
 
     def _changed_files_in(self, work: Path) -> List[str]:
         """work 里与基线不同的**白名单**文件（评估器产物、缓存、日志一律忽略）。"""
@@ -357,7 +380,13 @@ class Harness:
         self.log(f"=== round {idx} | {cid} | phase={phase} | parent={parent_id or 'base'} | code_chars={self.code_chars} | {self.budget.summary()}")
 
         # 工作副本（父代 patch 打到干净基线上）
-        work = self._prepare_work(cid, parent_id)
+        try:
+            work = self._prepare_work(cid, parent_id)
+        except Exception as ex:
+            meta.status = "error"
+            meta.fail_reasons = [f"work preparation failed: {ex!r}"[:200]]
+            self.store.update(meta, "error")
+            raise
         self.proposer.cb = Codebase.overlay(self.cb, work) if parent_id else self.cb
 
         round_cost = 0.0
@@ -389,13 +418,19 @@ class Harness:
                     meta.hypothesis = prop.hypothesis; meta.expected = prop.expected; meta.tags = prop.keywords[:8]
                 work = self._prepare_work(cid, parent_id)
                 changed, errs, rep, patch = self._apply_and_gate(prop, work, parent_id, shown2)
+        except Exception as ex:
+            meta.status = "error"
+            meta.fail_reasons = [f"proposal/check failed: {ex!r}"[:200]]
+            raise
         finally:
             meta.llm_cost_cny += round_cost
             self._adapt_code_chars(round_cost)
+            if meta.status == "error":
+                self.store.update(meta, "error")
 
         meta.files_changed = self._changed_files_in(work)
         self.store.write_patch(cid, patch)
-        (work / "candidate.patch").write_text(patch, encoding="utf-8")
+        (work / "candidate.patch").write_text(patch, encoding="utf-8", newline="")
 
         if errs or (rep and not rep.ok):
             meta.status = "gate_failed"
@@ -466,6 +501,8 @@ class Harness:
 
     # ---------- run ----------
     def run(self, max_rounds: Optional[int] = None) -> Optional[CandidateMeta]:
+        if self.log_f.closed:
+            self.log_f = open(self.run_dir / "harness.log", "a", encoding="utf-8")
         if max_rounds is None:
             max_rounds = 3 * self.budget.max_evaluations     # 防止模型持续违反协议时无限烧 LLM 费
         best = None
@@ -498,11 +535,15 @@ class Harness:
                         self.log("  too many consecutive crashes; stopping")
                         break
             # ---- final 阶段：用 reserve 对最优候选做保守微调 ----
-            if self.budget.reserve_evaluations > 0 and self.selector.best() is not None:
+            main_evaluations = self.budget.max_evaluations - self.budget.reserve_evaluations
+            if (self.budget.reserve_evaluations > 0
+                    and self.budget.state.evaluations >= main_evaluations
+                    and idx < max_rounds and self.selector.best() is not None):
                 self.log(f"=== final phase: {self.budget.reserve_evaluations} reserved evaluation(s) for conservative refinement of the best")
                 self.selector.force_phase = "final"
                 k = 0
-                while self.budget.can_evaluate(keep_reserve=False) and k < 3 * self.budget.reserve_evaluations:
+                while (self.budget.can_evaluate(keep_reserve=False) and idx < max_rounds
+                       and k < 3 * self.budget.reserve_evaluations):
                     idx += 1; k += 1
                     try:
                         self.round(idx)
@@ -515,7 +556,10 @@ class Harness:
             self.log("interrupted; finalizing")
             best = self.selector.best()
         finally:
-            self.finalize(best)
+            try:
+                self.finalize(best)
+            finally:
+                self.log_f.close()
         return best
 
     def finalize(self, best: Optional[CandidateMeta]) -> None:

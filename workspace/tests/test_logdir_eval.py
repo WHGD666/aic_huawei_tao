@@ -55,6 +55,30 @@ def test_logdir_task1_no_overflow_needed(tmp_path):
     assert "[metrics from text]" in r.stage_logs["bp-ng45/1001"]
 
 
+def test_logdir_failed_command_invalidates_existing_metrics(tmp_path):
+    import subprocess
+    from unittest.mock import patch
+    out = tmp_path / "results" / "c001"
+    _mk(out, "bp-ng45", 1001, grt=None)
+    ev = LogDirEvaluator(["bp-ng45"], [1001], cmd="unused", results_root=tmp_path / "results", full_flow=False)
+    with patch("harness.evaluator.subprocess.run", return_value=subprocess.CompletedProcess([], 1)):
+        run = ev.evaluate("c001", tmp_path / "work").runs["bp-ng45/1001"]
+    assert not run.valid and "exited 1" in run.fail_reason
+
+
+def test_logdir_rejects_nonfinite_timing_metric(tmp_path):
+    import json
+    base = tmp_path / "base"
+    _mk(base, "bp_fe-ng45", 1001, grt=None)
+    metrics = json.loads((S / "placeopt.json").read_text(encoding="utf-8"))
+    metrics["placeopt__timing__setup__wns"] = float("inf")
+    (base / "bp_fe-ng45" / "1001" / "placeopt.json").write_text(json.dumps(metrics), encoding="utf-8")
+    ev = LogDirEvaluator(["bp_fe-ng45"], [1001], cmd="unused", results_root=tmp_path / "res",
+                         baseline_root=base, full_flow=False)
+    run = ev.baseline().runs["bp_fe-ng45/1001"]
+    assert not run.valid and "wns/tns" in run.fail_reason
+
+
 def test_logdir_json_preferred_over_text(tmp_path):
     """同目录有 placeopt.json 时以 json 为准（文本里 wns=-0.35，json 里 -0.412）。"""
     base = tmp_path / "base"

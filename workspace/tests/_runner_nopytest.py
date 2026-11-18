@@ -14,14 +14,17 @@ class _Raises:
         return issubclass(t, s.exc)
 pt.raises=_Raises
 p=f=0
+temp_root = pathlib.Path(__file__).resolve().parents[2] / 'env' / 'tmp'
+temp_root.mkdir(parents=True, exist_ok=True)
 for mod in sys.argv[1:]:
     T = __import__(mod, fromlist=['x'])
     for n,fn in inspect.getmembers(T, inspect.isfunction):
         if not n.startswith('test_'): continue
         try:
-            with tempfile.TemporaryDirectory() as d:
+            with tempfile.TemporaryDirectory(dir=temp_root) as d:
                 fn(pathlib.Path(d)) if 'tmp_path' in inspect.signature(fn).parameters else fn()
             p+=1; print('PASS', n)
         except Exception:
             f+=1; print('FAIL', n); traceback.print_exc()
 print(f"\n{p} passed, {f} failed")
+sys.exit(1 if f else 0)

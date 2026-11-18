@@ -9,7 +9,7 @@ sys.path.insert(0, str(WS))
 
 from harness.budget import Budget, Pricing, Usage  # noqa: E402
 from harness.codebase import Codebase, Edit, apply_edits, git_diff  # noqa: E402
-from harness.evaluator import MockEvaluator  # noqa: E402
+from harness.evaluator import MockEvaluator, OfficialEvaluator  # noqa: E402
 from harness.gate import Gate  # noqa: E402
 from harness.proposer import parse_proposal  # noqa: E402
 from harness.scoring import RunMetrics, candidate_score, improvement, overflow_penalty, run_score  # noqa: E402
@@ -42,6 +42,30 @@ def test_run_score_weights():
     assert run_score(b, c, full_flow=False) == pytest.approx(0.5)
     assert run_score(b, c, full_flow=True) == pytest.approx(0.5 - 0.2)
     assert run_score(b, RunMetrics("x", 1, 0, 0, valid=False), False) is None
+    assert run_score(b, RunMetrics("x", 1, float("nan"), -50), False) is None
+    assert run_score(b, RunMetrics("x", 1, -0.5, -50, overflow=float("nan")), True) is None
+
+
+def test_official_evaluator_rejects_missing_metrics():
+    ev = OfficialEvaluator(["x"], [1], cmd="unused", full_flow=True)
+    for run in ({"tns": -10, "overflow": 2}, {"wns": -1, "tns": -10},
+                {"wns": "nan", "tns": -10, "overflow": 2}):
+        result = ev._parse("c001", {"runs": {"x/1": run}}).runs["x/1"]
+        assert not result.valid and result.fail_reason
+    ev1 = OfficialEvaluator(["x"], [1], cmd="unused", full_flow=False)
+    assert ev1._parse("c001", {"runs": {"x/1": {"wns": -1, "tns": -10}}}).runs["x/1"].valid
+
+
+def test_official_evaluator_rejects_failed_command(tmp_path):
+    import json
+    import subprocess
+    from unittest.mock import patch
+    ev = OfficialEvaluator(["x"], [1], cmd="unused")
+    work = tmp_path / "work"; work.mkdir()
+    (work / "eval_result.json").write_text(json.dumps({"runs": {"x/1": {"wns": -1, "tns": -10, "valid": True}}}))
+    with patch("harness.evaluator.subprocess.run", return_value=subprocess.CompletedProcess([], 1)):
+        run = ev.evaluate("c001", work).runs["x/1"]
+    assert not run.valid and "exited 1" in run.fail_reason
 
 
 def test_candidate_score_aggregation():
@@ -124,13 +148,14 @@ def test_apply_edits_and_diff(tmp_path):
     assert d.startswith("diff --git a/partition/gnn_partition.py b/partition/gnn_partition.py")
     assert "--- a/partition/gnn_partition.py" in d and "+++ b/partition/gnn_partition.py" in d
     # 提交要求：candidate.patch 必须能用 git apply 打到官方基线上
-    import shutil, subprocess
+    import os, shutil, subprocess
     base_copy = tmp_path / "base"
     shutil.copytree(FAKE, base_copy)
-    (tmp_path / "c.patch").write_text(d, encoding="utf-8")
-    r = subprocess.run(["git", "apply", "--check", str(tmp_path / "c.patch")], cwd=base_copy, capture_output=True, text=True)
+    (tmp_path / "c.patch").write_text(d, encoding="utf-8", newline="")
+    env = os.environ.copy(); env["GIT_CEILING_DIRECTORIES"] = str(base_copy.parent.resolve())
+    r = subprocess.run(["git", "apply", "--check", str(tmp_path / "c.patch")], cwd=base_copy, env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    r = subprocess.run(["git", "apply", str(tmp_path / "c.patch")], cwd=base_copy, capture_output=True, text=True)
+    r = subprocess.run(["git", "apply", str(tmp_path / "c.patch")], cwd=base_copy, env=env, capture_output=True, text=True)
     assert r.returncode == 0 and "TIMING_WEIGHT = 0.5" in (base_copy / "partition/gnn_partition.py").read_text()
     _, errs = apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "NOPE", "x")])
     assert errs and "not found" in errs[0]
@@ -289,6 +314,9 @@ def test_gate_case_name_hardcoding_rejected():
     assert not g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    if pdk == 'asap7': u = 'ps'\n").ok
     r = g.check({"partition/gnn_partition.py": "x = 1\n"}, "+    lef = read(platform)  # ng45 or asap7\n")
     assert r.ok
+    # 普通 for ... in 与同一行的工艺标签无关，不能误判为条件分支。
+    r = g.check({"partition/gnn_partition.py": "x = 1\n"}, '+    for name in examples: print("ng45")\n')
+    assert r.ok and r.warnings
 
 
 def test_gate_per_design_consistency(tmp_path):
@@ -316,9 +344,23 @@ def test_store_new_id_after_deletion(tmp_path):
     for i in range(3):
         st.create(CandidateMeta(st.new_id(), None, "h", "e", [], "probe"), "")
     import shutil
-    shutil.rmtree(tmp_path / "c" / "c002")
+    shutil.rmtree(tmp_path / "c" / "c003")
     st2 = CandidateStore(tmp_path / "c")
     assert st2.new_id() == "c004"
+
+
+def test_small_budget_keeps_probe_and_one_evaluation(tmp_path):
+    from harness import loop as L
+    store = CandidateStore(tmp_path / "store")
+    sel = Selector(store, phase_plan={"probe": 6, "structural": 14, "combine": 8})
+    sel.rescale_phase_plan(1)
+    assert sel.phase_plan == {"probe": 1, "structural": 0, "combine": 0}
+    cfg = L.load_config(WS / "config" / "harness.yaml")
+    cfg["budget"]["max_evaluations"] = 1
+    cfg["gate"]["whitelist_file"] = "tests/whitelist_fake.yaml"
+    h = L.Harness(cfg, llm_mode="replay", run_dir=tmp_path / "run")
+    assert h.budget.reserve_evaluations == 0 and h.budget.can_evaluate()
+    h.log_f.close()
 
 
 def test_apply_edits_atomic_and_path_guard(tmp_path):
@@ -335,13 +377,66 @@ def test_apply_edits_atomic_and_path_guard(tmp_path):
 def test_difflib_fallback_patch_applies(tmp_path):
     """HIGH#4：无 git 时 difflib 生成的 patch 也要能被 git apply（这里用 git 验证兜底产物）。"""
     from harness.codebase import _difflib_diff
-    import subprocess, shutil
+    import os, subprocess, shutil
     work = tmp_path / "w"
     apply_edits(FAKE, work, [Edit("partition/gnn_partition.py", "TIMING_WEIGHT = 0.0", "TIMING_WEIGHT = 0.5")])
     d = _difflib_diff("partition/gnn_partition.py", FAKE / "partition/gnn_partition.py", work / "partition/gnn_partition.py")
     assert d.startswith("diff --git a/partition/gnn_partition.py b/partition/gnn_partition.py")
     base_copy = tmp_path / "base"; shutil.copytree(FAKE, base_copy)
-    (tmp_path / "p.patch").write_text(d, encoding="utf-8")
-    r = subprocess.run(["git", "apply", str(tmp_path / "p.patch")], cwd=base_copy, capture_output=True, text=True)
+    (tmp_path / "p.patch").write_text(d, encoding="utf-8", newline="")
+    env = os.environ.copy(); env["GIT_CEILING_DIRECTORIES"] = str(base_copy.parent.resolve())
+    r = subprocess.run(["git", "apply", str(tmp_path / "p.patch")], cwd=base_copy, env=env, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "TIMING_WEIGHT = 0.5" in (base_copy / "partition/gnn_partition.py").read_text()
+
+
+def test_patch_fingerprint_keeps_file_identity():
+    from harness.codebase import patch_fingerprint
+    hunk = "@@ -1 +1 @@\n-old\n+new\n"
+    a = "diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n" + hunk
+    b = "diff --git a/b.py b/b.py\n--- a/b.py\n+++ b/b.py\n" + hunk
+    assert patch_fingerprint(a) != patch_fingerprint(b)
+    assert patch_fingerprint(a) == patch_fingerprint(a.replace("@@ -1 +1 @@", "@@ -5 +5 @@"))
+
+
+def test_adapter_restores_seed_after_each_run(tmp_path):
+    import json
+    from unittest.mock import patch
+    from tools.evaluate_open3dbench import run_placer
+
+    o3 = tmp_path / "Open3DBench"
+    params = o3 / "Place-LoL" / "test" / "3D_input_default" / "bp_fe.json"
+    params.parent.mkdir(parents=True)
+    params.write_text('{"random_seed": 1000, "density": 0.4}\n', encoding="utf-8", newline="")
+    original = params.read_bytes()
+    seen = []
+
+    def fake_run(*args):
+        seen.append(json.loads(params.read_text(encoding="utf-8"))["random_seed"])
+        return 0
+
+    with patch("tools.evaluate_open3dbench.run", side_effect=fake_run):
+        for seed in (1001, 1002, 1003):
+            run_placer(o3, "bp_fe-ng45", seed, "harness", "default", "echo {seed}", {}, tmp_path / "run.log", False, 10)
+            assert params.read_bytes() == original
+    assert seen == [1001, 1002, 1003]
+    with patch("tools.evaluate_open3dbench.run", side_effect=RuntimeError("failed")):
+        with pytest.raises(RuntimeError):
+            run_placer(o3, "bp_fe-ng45", 1001, "harness", "default", "echo {seed}", {}, tmp_path / "run.log", False, 10)
+    assert params.read_bytes() == original
+
+
+def test_adapter_inplace_guard_and_repaired_alias(tmp_path):
+    from tools.evaluate_open3dbench import collect, main
+
+    o3 = tmp_path / "Open3DBench"; o3.mkdir()
+    work = tmp_path / "candidate"; work.mkdir()
+    (work / "edit.py").write_text("x = 1\n")
+    out = tmp_path / "out"
+    assert main(["--workdir", str(work), "--out", str(out), "--o3", str(o3), "--inplace"]) == 2
+    assert not (o3 / "edit.py").exists()
+    log_dir = tmp_path / "logs"; log_dir.mkdir()
+    results_dir = tmp_path / "results"; results_dir.mkdir()
+    (log_dir / "3_4b_task1_repaired.json").write_text("{}")
+    collect(log_dir, results_dir, out, "3_4b_task1_repaired.json", 0, False)
+    assert (out / "placeopt.json").exists()
