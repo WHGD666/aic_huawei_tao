@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM  05_pull_open3dbench.bat -- 拉取 Open3DBench 官方镜像，用于在官方容器到来前实测流程与日志格式
 REM  前置：Docker Desktop 磁盘镜像已迁到 F:\huawei_aic_tao\task1\env\docker（否则 D 盘会爆）

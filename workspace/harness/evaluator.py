@@ -240,6 +240,15 @@ class LogDirEvaluator(Evaluator):
                 grt = _read_any(d, ["grt.log", "route.log", "5_1_grt.log"])
                 part = _read_any(d, ["partition.log", "partition.txt", "partition.json"])
                 status = parse_stage_status(flow + "\n" + sta)
+                # make 的阶段命令可能通过 tee 返回 0；flow.log 的非零返回码又可能掩盖具体错误。
+                # 无论总状态如何，都以最早的出错阶段日志给出可诊断的原因。
+                for stage_log in sorted(d.glob("*.log")):
+                    if stage_log.name == "flow.log":
+                        continue
+                    stage_status = parse_stage_status(stage_log.read_text(encoding="utf-8", errors="ignore"))
+                    if not stage_status.ok:
+                        status = stage_status
+                        break
                 # ---- 指标：json 优先 ----
                 js = _read_any(d, [f"{self.metric_stage}.json", f"*{self.metric_stage}*.json", "metrics.json"])
                 om = parse_orfs_metrics(js, None) if js else None

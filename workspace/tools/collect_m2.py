@@ -3,8 +3,7 @@ collect_m2.py -- M2 跑完后，把 Open3DBench 产出的真实日志 / json / �
 
 做什么：
   1. 找 third_party/Open3DBench/OpenROAD-3D/flow/logs/nangate45_3D/bp_fe/<method>_<variant>/ 与 results/.../bp_fe/lol/
-  2. 复制 *.log / *.json / *.rpt 到 workspace/tests/samples/real_bp_fe/（给测试用）
-     并按 LogDirEvaluator 的布局放一份到 workspace/baseline/results/partition_placement/bp_fe-ng45/1001/
+  2. 复制 *.log / *.json / *.rpt 到 workspace/tests/samples/real_bp_fe/（诊断资料；不作为任务一基线）
   3. 立刻用 openroad_parse 跑一遍，打印提取结果与每阶段耗时（从 runtime.log / 各 log 的时间戳）
   4. 列出所有出现过的 ORFS 指标 key，方便确认任务一/二的采样 key
 """
@@ -29,13 +28,10 @@ O3 = ROOT / "third_party" / "Open3DBench" / "OpenROAD-3D" / "flow"
 
 def find_run_dirs():
     out = []
-    for base in (O3 / "logs" / "nangate45_3D", O3 / "results" / "nangate45_3D"):
+    for category in ("logs", "results", "reports"):
+        base = O3 / category / "nangate45_3D" / "bp_fe"
         if base.exists():
-            for d in base.iterdir():
-                if d.is_dir():
-                    for sub in d.iterdir():
-                        if sub.is_dir():
-                            out.append(sub)
+            out.extend(d for d in base.iterdir() if d.is_dir())
     return out
 
 
@@ -45,16 +41,13 @@ def main():
         print("no run dirs under", O3 / "logs", "- did 07_run_lol_bpfe.bat finish?")
         return 1
     dst_samples = WS / "tests" / "samples" / "real_bp_fe"
-    dst_eval = WS / "baseline" / "results" / "partition_placement" / "bp_fe-ng45" / "1001"
-    for d in (dst_samples, dst_eval):
-        d.mkdir(parents=True, exist_ok=True)
+    dst_samples.mkdir(parents=True, exist_ok=True)
     copied = []
     for d in dirs:
         for p in d.rglob("*"):
             if p.suffix in (".log", ".json", ".rpt", ".txt") and p.stat().st_size < 50_000_000:
-                rel = f"{d.parent.name}__{d.name}__{p.name}"
+                rel = f"{d.relative_to(O3).parts[0]}__{d.name}__{p.name}"
                 shutil.copy2(p, dst_samples / rel)
-                shutil.copy2(p, dst_eval / p.name)
                 copied.append(p)
     print(f"copied {len(copied)} files -> {dst_samples}")
 
@@ -112,8 +105,8 @@ def main():
                 bits.append(f"STATUS: {st.fail_reason}")
             if bits:
                 print(f"  {p.name:<32} " + " | ".join(bits))
-    print("\nNext: compare with docs/open3dbench_notes.md §2, then run")
-    print("  python -m harness.loop --task partition_placement --evaluator logdir --llm-mode replay --max-rounds 1")
+    print("\nDiagnostic only: this full LoL flow is not the task-one scoring baseline.")
+    print("Next: compare with docs/open3dbench_notes.md §2 and calibrate the stage-specific evaluator.")
     return 0
 
 

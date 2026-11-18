@@ -45,7 +45,7 @@
 ### 1.4 预算（最硬的约束）
 
 - 单任务单次运行：**≤ 30 次候选评估**，**≤ 15 元** API 费（非高峰价），任一触顶即停
-- 1 次候选评估 = 3 训练算例 × 3 种子 = **9 次完整物理设计流程**。单次流程耗时原文未给（我的估计是十分钟到小时级，**待 M2 实测**），30 次评估的墙钟时间可能是天级，实际可用候选数可能远不到 30
+- 1 次候选评估 = 3 训练算例 × 3 种子 = **9 次完整物理设计流程**。公开 Open3DBench 的 `bp_fe` LoL 后端实测 47 分钟（含不参与赛题计分的详细布线；GRT 仅 19.71 秒），**不能外推官方单次流程耗时**；30 次评估总耗时仍待官方流程实测
 - 外层官方循环负责计量，harness 不能修改、绕过或重置计量
 - 所有模型调用必须经官方代理、使用指定的 DeepSeek-V4.1-Flash，**不得更换或混用其他基模**（开发阶段用公开 API 调试可以，正式运行只认官方代理）
 
@@ -258,7 +258,7 @@ F:\huawei_aic_tao\task1\
 
 | 风险 | 影响 | 对策 |
 |---|---|---|
-| 官方容器 / 评估接口迟迟拿不到 | M2 以后全部阻塞 | 先用 mock 把 harness 做完（M3）；并行准备 Open3DBench 自建 |
+| 官方容器 / 评估接口迟迟拿不到 | 正式 M2 / M4 / M5 阻塞 | mock harness 已完成；公开 Open3DBench 诊断见 `docs/m2_diagnostic_2026-11-18.md` |
 | 单次评估太慢（9 次流程） | 30 次预算跑不完 | gate 冒烟测试拦错；候选"批量"概念——一次评估可携带多个独立小改动做消融？（视接口而定） |
 | DeepSeek-Flash 写代码能力弱、diff 格式错 | 候选大量无效 | SEARCH/REPLACE 格式 + 一次自动修复 + 函数级片段而非全文 |
 | 过拟合训练集 | 验证集 / 隐藏算例掉分 | 选择指标用 min / mean−σ；禁止算例名进 prompt |
@@ -270,7 +270,7 @@ F:\huawei_aic_tao\task1\
 
 ## 8. 需要你确认 / 提供的事项
 
-**已解决（2026-11-17）**：模型名 = `deepseek-flash`；API 可达；Open3DBench 仓库 = `lamda-bbo/Open3DBench`，镜像 `shiyunqi/open3dbench:eval` / `:place`；两层建模方式已确认（见 `docs/open3dbench_notes.md`）。
+**已解决（截至 2026-11-18）**：模型名 = `deepseek-flash`；API 可达；Open3DBench 仓库 = `lamda-bbo/Open3DBench`；两层建模方式已确认；Docker 已启动，`shiyunqi/open3dbench:eval` 镜像和 `binaries.tar.gz` 已在本机，公开 `bp_fe` OpenROAD LoL 诊断已跑；本机 NVIDIA RTX 4060 Laptop GPU（驱动 581.57，8 GiB）与 Git 均可用（见 `docs/m2_diagnostic_2026-11-18.md`）。
 
 **仍待你 / 组委会**：
 1. **官方开发容器**与**评估接口文档**（如何提交候选、返回什么、本地冒烟是否计入 30 次）
@@ -278,10 +278,8 @@ F:\huawei_aic_tao\task1\
 3. 官方**初始算法基线值**是否直接给出
 4. 官方模型代理的接口形式（是否 OpenAI 兼容、是否同样按缓存命中打折、thinking 是否允许关）
 5. 官方评测环境是否提供 GPU
-6. **Docker Desktop 磁盘迁到 `F:\huawei_aic_tao\task1\env\docker`**（GUI 操作），然后跑 `workspace\env\05_pull_open3dbench.bat`
-7. 本机 `nvidia-smi` 输出；`where git`
-8. 基线违例量为 0 时改善比例如何定义（向组委会答疑提问）
-9. 是否允许修改 GRT 的 layer adjustment / Makefile 级参数（`DONT_USE_CELLS`、`PLACE_DENSITY`、`CTS_*`、`GLOBAL_ROUTE_ARGS`）——这些是最便宜的旋钮，但可能被视为"改评估口径"
+6. 基线违例量为 0 时改善比例如何定义（向组委会答疑提问）
+7. 是否允许修改 GRT 的 layer adjustment / Makefile 级参数（`DONT_USE_CELLS`、`PLACE_DENSITY`、`CTS_*`、`GLOBAL_ROUTE_ARGS`）——这些是最便宜的旋钮，但可能被视为"改评估口径"
 
 ---
 
@@ -324,8 +322,13 @@ F:\huawei_aic_tao\task1\
 - `docs/tech_report.md` 骨架（附录六节），已填 harness 设计、彩排、审核；实验表留 `【待官方运行】`
 - 44 测试全绿
 
+### 2026-11-18 · 本机公开 Open3DBench 诊断与适配器校正
+- Docker `open3dbench:eval` 镜像和 `binaries.tar.gz` 已就位；`bp_fe` 的 `make do-lolflow` 运行到最终报告。全程约 47 分钟，主要耗在详细布线；HotSpot 示例缺脚本而失败，不属于赛题计分阶段。原始日志、输入 hash、阶段耗时与限制见 `docs/m2_diagnostic_2026-11-18.md`。
+- 实测公开 GRT / resize 的阶段 JSON **没有 WNS/TNS**，新增只读 STA 采样得到 `globalroute__` / `placeopt__` 指标。`evaluate_open3dbench.py` 现通过原 Makefile 建立 OpenROAD 环境，不再因缺 `TECH_LEF` 立即失败。
+- 任务一、任务二公开截断流程经过 PDN 时均产生 `PDN-0179`；Make 阶段仍可返回 0，因此适配器与 `LogDirEvaluator` 都逐阶段查错并判运行无效。任务二截断流程约 81 秒，仍**不能**作为官方单次耗时或基线分数。
+- CMD 批处理修复编码、换行与命令转义；收集脚本只将真实样本放在忽略目录，不误写任务一基线。布局适配器拒绝复用旧 DEF 和未重跑布局的多种子评估。58 项测试通过；原先未跟踪的候选文件已按 SHA256 恢复。
+
 ### 下一步（按优先级）
-1. 你本机：`05_pull_open3dbench.bat` → 下载 `binaries.tar.gz` 解压到 `third_party\Open3DBench\Place-LoL\binaries\` → `07_run_lol_bpfe.bat` → `python tools\collect_m2.py`（M2：真实耗时 + 真实 json key）；随后可用 `tools/evaluate_open3dbench.py --inplace --method tcad25` 对基线跑一次任务一截断流程验证适配器
-2. 向组委会问 §8 第 2、9 条（"一次时序优化"是 repair_design 还是 repair_timing；Makefile 变量是否可改）
-3. 拿到官方容器：对照 `docs/open3dbench_notes.md` §2 差异表，填真实白名单，接评估接口（`--evaluator logdir --official-cmd ...`），M4 小预算真跑
-4. 决赛向：harness 自演化（让智能体改 prompts/ 与 selector 参数，用 mock 评估离线做消融）；§3.4 消融表
+1. 向组委会问 §8 第 2、7 条（"一次时序优化"是 repair_design 还是 repair_timing；Makefile 变量是否可改）。
+2. 拿到官方容器和评估接口后，对照 `docs/open3dbench_notes.md` §2 逐项确认流程与 PDN、填真实白名单，实测任务一单次耗时并接入评估器；再按 M4 做小预算真跑。
+3. 决赛向：harness 自演化（让智能体改 prompts/ 与 selector 参数，用 mock 评估离线做消融）；§3.4 消融表。

@@ -64,7 +64,7 @@ python tools\report.py logs\my_run -o logs\my_run\report.md
 
 彩排样例：`logs/rehearsal/R30_pp_mock/`（任务一，真实 deepseek-flash × 真实 Open3DBench 代码 × mock 评估，30/30 次评估 0.17 元）、`logs/rehearsal/FF10_mock/`（全流程 10 次评估）；报告见 `../docs/rehearsal_report_R30_mock.md`。
 
-接真实流程：`tools/evaluate_open3dbench.py`（在 open3dbench:eval 容器里）可作为 `--evaluator logdir --official-cmd "python3 tools/evaluate_open3dbench.py --workdir {workdir} --out {out} --task partition_placement --placer-cmd '...'"` 的实现；`--dry-run` 可在无容器时检查命令拼装。
+公开流程诊断：`tools/evaluate_open3dbench.py` 在 `open3dbench:eval` 容器里可输出 `LogDirEvaluator` 所需的目录；`--dry-run` 检查命令拼装。它在原 Makefile 环境中执行，并对 GRT / resize 后的 ODB 单独做 STA 采样。**该脚本只用于本地诊断，不等同于尚未提供的官方评估接口。**公开 `bp_fe` 的任务一截断流程有 `PDN-0179`，会被正确标为无效。详见 `../docs/m2_diagnostic_2026-11-18.md`。
 
 Linux / 官方容器内：`./run.sh partition_placement`。
 

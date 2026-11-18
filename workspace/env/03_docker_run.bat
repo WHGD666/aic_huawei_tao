@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM  03_docker_run.bat -- 启动官方开发容器，把 workspace 挂进去
 REM  前置: 1) Docker Desktop 磁盘镜像已迁到 F:\huawei_aic_tao\task1\env\docker

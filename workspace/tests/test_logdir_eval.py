@@ -13,7 +13,7 @@ from harness.evaluator import LogDirEvaluator  # noqa: E402
 S = WS / "tests" / "samples"
 
 
-def _mk(root: Path, case: str, seed: int, sta="sta_ng45.rpt", flow=None, grt="grt_ng45.log", rep="repair_ng45.log"):
+def _mk(root: Path, case: str, seed: int, sta="sta_ng45.rpt", flow=None, grt="grt_ng45.log", rep=None):
     d = root / case / str(seed)
     d.mkdir(parents=True, exist_ok=True)
     shutil.copy(S / sta, d / "sta.rpt")
@@ -64,6 +64,30 @@ def test_logdir_failed_command_invalidates_existing_metrics(tmp_path):
     with patch("harness.evaluator.subprocess.run", return_value=subprocess.CompletedProcess([], 1)):
         run = ev.evaluate("c001", tmp_path / "work").runs["bp-ng45/1001"]
     assert not run.valid and "exited 1" in run.fail_reason
+
+
+def test_logdir_rejects_error_in_intermediate_stage(tmp_path):
+    base = tmp_path / "base"
+    _mk(base, "bp_fe-ng45", 1001, grt=None)
+    d = base / "bp_fe-ng45" / "1001"
+    (d / "flow.log").write_text("exit code 0\n", encoding="utf-8")
+    (d / "2_6_floorplan_pdn.log").write_text("[ERROR PDN-0179] Unable to repair all channels.\n", encoding="utf-8")
+    ev = LogDirEvaluator(["bp_fe-ng45"], [1001], cmd="unused", results_root=tmp_path / "res",
+                         baseline_root=base, full_flow=False)
+    run = ev.baseline().runs["bp_fe-ng45/1001"]
+    assert not run.valid and "PDN-0179" in run.fail_reason
+    (d / "flow.log").write_text("exit code 1\n[ERROR] flow failed\n", encoding="utf-8")
+    run = ev.baseline().runs["bp_fe-ng45/1001"]
+    assert not run.valid and "PDN-0179" in run.fail_reason
+
+
+def test_logdir_rejects_repair_stage_error(tmp_path):
+    base = tmp_path / "base"
+    _mk(base, "bp_fe-ng45", 1001, grt=None, rep="repair_ng45.log")
+    ev = LogDirEvaluator(["bp_fe-ng45"], [1001], cmd="unused", results_root=tmp_path / "res",
+                         baseline_root=base, full_flow=False)
+    run = ev.baseline().runs["bp_fe-ng45/1001"]
+    assert not run.valid and "RSZ-0063" in run.fail_reason
 
 
 def test_logdir_rejects_nonfinite_timing_metric(tmp_path):

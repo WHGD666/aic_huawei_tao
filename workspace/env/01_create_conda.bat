@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM  01_create_conda.bat -- 创建 harness 轻量环境（prefix 在 F 盘）
 REM  依赖: D:\anaconda 已存在

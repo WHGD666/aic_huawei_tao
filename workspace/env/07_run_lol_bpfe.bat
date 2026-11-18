@@ -1,7 +1,9 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM  07_run_lol_bpfe.bat -- M2：在 open3dbench:eval 容器里跑一次 bp_fe 的 LoL 后端评估
-REM  目的：拿到真实的阶段耗时、日志与 json 指标格式，替换 tests/samples/ 并校正解析器
+REM  目的：拿到真实的阶段耗时、日志与 json 指标格式，校正解析器
+REM  只运行题目相关的 OpenROAD 后端；公开仓库的 HotSpot 示例缺 run.sh，且温度不参与评分
 REM
 REM  前置：
 REM    1) Docker Desktop 磁盘已迁到 F 盘；05_pull_open3dbench.bat 已拉 shiyunqi/open3dbench:eval
@@ -25,22 +27,14 @@ if not exist "%DEF%" (
 )
 docker image inspect shiyunqi/open3dbench:eval >nul 2>&1 || ( echo [07] image missing; run 05_pull_open3dbench.bat & exit /b 1 )
 
-REM 只跑 bp_fe：生成一个裁剪版 run 脚本（Linux 换行）
-set RUN1=%O3%\OpenROAD-3D\flow\run_lol_bpfe_only.sh
-powershell -NoProfile -Command ^
-  "$s = Get-Content -Raw '%O3%\OpenROAD-3D\flow\run_lol_iccad2023.sh';" ^
-  "$s = $s -replace '(?m)^run_task +\"(?!bp_fe_top).*\r?\n', '';" ^
-  "$s = $s -replace \"`r`n\", \"`n\";" ^
-  "[IO.File]::WriteAllText('%RUN1%', $s)"
-
 if not exist "%TAO_WS%\logs" mkdir "%TAO_WS%\logs"
-echo [07] starting container; full log -> %TAO_WS%\logs\m2_bpfe_lol.log
-docker run --rm -it ^
+echo [07] starting container; full log: %TAO_WS%\logs\m2_bpfe_lol.log
+docker run --rm ^
   -v "%O3%\OpenROAD-3D":/workspace/OpenROAD-3D ^
   -v "%O3%\Place-LoL":/workspace/Place-LoL ^
   -v "%TAO_WS%":/workspace/harness_ws ^
   shiyunqi/open3dbench:eval ^
-  bash -lc "set -o pipefail; export PLACE_LOL_ROOT=/workspace/Place-LoL && cd /workspace/OpenROAD-3D/flow && chmod +x run_lol_bpfe_only.sh && (time ./run_lol_bpfe_only.sh default tcad25) 2>&1 | tee /workspace/harness_ws/logs/m2_bpfe_lol.log; rc=$?; echo FLOW_EXIT=$rc | tee -a /workspace/harness_ws/logs/m2_bpfe_lol.log; exit $rc"
+  bash -lc "set -o pipefail; export PLACE_LOL_ROOT=/workspace/Place-LoL DEF_VARIANT=default METHOD=tcad25 OPENROAD_EXE=/usr/bin/openroad; cd /workspace/OpenROAD-3D/flow && (time make DESIGN_CONFIG=designs/nangate45_3D/bp_fe_top/config_lol.mk do-lolflow) 2>&1 | tee /workspace/harness_ws/logs/m2_bpfe_lol.log; rc=$?; echo FLOW_EXIT=$rc | tee -a /workspace/harness_ws/logs/m2_bpfe_lol.log; exit $rc"
 if errorlevel 1 ( echo [07] flow failed. Check %TAO_WS%\logs\m2_bpfe_lol.log & exit /b 1 )
 
 echo.

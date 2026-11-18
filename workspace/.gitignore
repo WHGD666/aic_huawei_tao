@@ -15,3 +15,4 @@ logs/*
 logs/rehearsal/**/work/
 *.log
 *.vhdx
+tests/samples/real_bp_fe/

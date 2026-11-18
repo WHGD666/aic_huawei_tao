@@ -30,16 +30,16 @@ poly, active, metal1 … metal10, hb_layer(CUT), metal11 … metal20
 | 合法化 | 把合并 DEF 按层拆成 `upper.def` / `bottom.def`（HBT 不拆，TAPCELL 去掉），各自 `detailed_placement -max_displacement 300`，再把坐标写回合并 DEF | `split_cts_def_lol.py` → `lg_bottom.tcl` / `lg_upper.tcl` → `read_def_store_coord.py` | **合法化是分层做的**，displacement 上限 300（单位 site/row，待确认） |
 | 载入 | `load_cts.tcl` → `my_cts.odb` → 复制为 `4_cts.odb`（**跳过了 CTS！**） | | LoL 流程 `IDEAL_CLOCK=1`，没有 CTS、没有 repair_timing；题面任务二要求 CTS，说明组委会在此基础上加了 |
 | 供电网络 | 无（do-lolflow 里没有 pdn 步骤；`do-def_eval` 路径有 `do-2_6_floorplan_pdn`） | `scripts/pdn.tcl` | 题面说 PDN 固定，组委会流程里应该有 |
-| 全局布线 | `global_route -allow_congestion -verbose -congestion_iterations 5`（design config 覆盖默认），`set_global_routing_layer_adjustment metal2-metal20 0.5` 被 `FASTROUTE_TCL` 覆盖为**无 adjustment**；之后 `estimate_parasitics -global_routing`；`IDEAL_CLOCK` → `set_ideal_network` + 几条 reset false path | `scripts/global_route.tcl` | 指标 `globalroute__timing__*` 写入 `5_1_grt.json` |
+| 全局布线 | `global_route -allow_congestion -verbose -congestion_iterations 5`（design config 覆盖默认），`set_global_routing_layer_adjustment metal2-metal20 0.5` 被 `FASTROUTE_TCL` 覆盖为**无 adjustment**；之后 `estimate_parasitics -global_routing`；`IDEAL_CLOCK` → `set_ideal_network` + 几条 reset false path | `scripts/global_route.tcl` | **M2 实测：`5_1_grt.json` 只有告警/错误计数；脚本中的 `report_metrics` 被注释。WNS/TNS 需额外 STA 采样。** |
 | 详细布线 | `do-5_2_route`（`-droute_end_iter 5`） | | 题面说全流程**不要求详细布线**，组委会应该砍掉了 |
-| 填充 + 报告 | `do-6_1_fill` → `final_report.tcl`：RCX 抽取（`nangate45_3D.rules`）→ `report_metrics "finish"` → `6_report.json` | | Open3DBench 论文指标用 `finish__timing__setup__ws/tns`；**赛题任务二采样点是 GRT 后**，对应 `5_1_grt.json` 的 `globalroute__timing__setup__ws/tns`（待确认 key 名） |
+| 填充 + 报告 | `do-6_1_fill` → `final_report.tcl`：RCX 抽取（`nangate45_3D.rules`）→ `report_metrics "finish"` → `6_report.json` | | M2 实测 `finish__timing__setup__ws/tns` 存在；任务二在 GRT 后采样，须单独运行报告脚本，不能拿 `finish` 的值替代。 |
 | 温度 | `do-hotspot` | | 赛题不用 |
 
 MoL 流程（`do-def_eval` / `do-pre_cts` / `do-cts_eval`）更接近题面描述：`init_odb → pdn → 3_4_place_resized (repair_design) → 3_5_place_dp → cts → route → finish`。**题面任务一的"切分→布局与合法化→PDN→HBT→时序优化→STA"顺序与 `do-def_eval` 的前半段吻合**，组委会很可能是把 LoL 的分层合法化 + MoL 的 PDN/resize 管线拼起来。
 
 关键差异 **（必须向组委会确认）**：
 1. 任务一的"一次时序优化"是 `repair_design`（resize.tcl 只有 repair_design + buffer_ports + repair_tie_fanout，**没有 repair_timing**）还是 `repair_timing -setup`？两者差别巨大：repair_design 只修 DRV（slew/cap/fanout/长线），不直接修 setup。
-2. 采样用的 json key：`placeopt__timing__setup__ws/tns`（resize 阶段）还是别的。
+2. 采样用的 json key：公开 `resize.tcl` 的 `report_metrics` 也被注释，M2 额外采样得到 `placeopt__timing__setup__ws/tns`；官方是否如此采样仍待确认。
 3. 容器里 `DONT_USE_CELLS` 是否仍然禁掉所有 upper 缓冲器。
 
 ## 3. 切分 + 布局的"输入/输出契约"
@@ -63,7 +63,7 @@ MoL 流程（`do-def_eval` / `do-pre_cts` / `do-cts_eval`）更接近题面描�
 |---|---|---|
 | 两个独立设计 / 评估器拼时序 | 一个设计 20 层金属，HBT 是 CORE 宏 | `openroad_parse` 的跨层判定：路径经过 `HBT_BOTIN`/`HBT_TOPIN` 实例或 net 名含 hbt；GRT 表 Total 行直接就是两层之和 |
 | 白名单路径猜测 | 切分/布局在 Python（DREAMPlace fork + Partitioner），流程在 Tcl/Makefile | `whitelist_*.yaml` 待填真实路径；任务二的 CTS/GRT 旋钮大多是 **Makefile 环境变量**（`CTS_CLUSTER_SIZE`、`CTS_BUF_DISTANCE`、`GLOBAL_ROUTE_ARGS`、`TNS_END_PERCENT`、`SETUP_SLACK_MARGIN`、`PLACE_DENSITY`、`CELL_PAD_*`、`DONT_USE_CELLS`）→ 候选可能是改 `config.mk` 而不是 Tcl |
-| 指标从 report_wns 文本抓 | ORFS 风格：每阶段写 `<stage>.json`，key 形如 `globalroute__timing__setup__ws`、`finish__timing__setup__tns` | `LogDirEvaluator` 加 json 优先、文本兜底（已做文本；json 待加） |
+| 指标从 report_wns 文本抓 | ORFS 风格 `<stage>.json` 不保证含时序指标；公开 GRT 与 resize 阶段均没有，finish 才有；M2 已额外采样两个截断点 | `LogDirEvaluator` json 优先、文本兜底，并检查全部阶段日志中的失败 |
 | 溢出要自己算两层相加 | `Total` 行 | 已匹配 |
 | rsz 日志格式 | 见 `openroad_parse.py` 注释（已按 OpenROAD 源码校正） | 已改 |
 
@@ -71,13 +71,12 @@ MoL 流程（`do-def_eval` / `do-pre_cts` / `do-cts_eval`）更接近题面描�
 
 - 评估镜像 `shiyunqi/open3dbench:eval`（OpenROAD + HotSpot），布局镜像 `shiyunqi/open3dbench:place`（DREAMPlace/CUDA）。**两个镜像**。组委会可能合成一个。
 - 基准数据不在 git 里：`benchmarks_lol.tar.gz`、`binaries.tar.gz`（Google Drive）。组委会会提供 bp_fe/bp/ariane133/swerv_wrapper 的 ng45 版本；**asap7 版本仓库里没有**，是组委会新做的——`bp_fe-asap7` 的 3D 平台（层名 M1–M9 + 镜像、HBT 宏尺寸、site）我们完全不知道，这正是"跨工艺"考点。所有层名/单位/site 必须从 LEF 读。
-- 本机能跑的最小实验：`docker pull shiyunqi/open3dbench:eval` + 仓库自带的 `converted_output` DEF（如果 Google Drive 包能下载）→ `./run_lol_iccad2023.sh default tcad25` 跑一个 bp_fe → 拿到真实日志格式与耗时。
+- 本机 `bp_fe` LoL 诊断已跑；输入、耗时、真实指标格式与局限见 `docs/m2_diagnostic_2026-11-18.md`。全流程的 HotSpot 示例缺 `run.sh`；OpenROAD 阶段已完成。
 
 ## 6. 下一步（替换 PLAN §8 的部分待确认项）
 
-1. `docker pull shiyunqi/open3dbench:eval`（先迁 Docker 磁盘到 F 盘），本机跑一次 bp_fe LoL 评估，记录每阶段耗时与 `5_1_grt.json` / `6_report.json` 的 key
-2. 等官方容器：对照本文 §2 的差异表逐条确认，重点是"一次时序优化"到底是什么
-3. 白名单改成真实路径；`knob_catalog` 补 Makefile 变量类旋钮
+1. 等官方容器：对照本文 §2 的差异表逐条确认，重点是"一次时序优化"到底是什么、PDN 的有效配置与 GRT 时序采样
+2. 白名单改成真实路径；`knob_catalog` 补经组委会确认可改的 Makefile 变量类旋钮
 
 ## 7. 与官方容器的差异（拿到后填）
 

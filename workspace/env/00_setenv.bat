@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM  00_setenv.bat  -- 把所有缓存/临时目录指向 F 盘（C 盘零写入）
 REM  用法: 每次打开新的 cmd 先执行  call F:\huawei_aic_tao\task1\workspace\env\00_setenv.bat
@@ -34,7 +35,7 @@ set PYTHONPATH=%TAO_WS%
 for %%d in ("%CONDA_PKGS_DIRS%" "%PIP_CACHE_DIR%" "%TORCH_HOME%" "%HF_HOME%" "%MPLCONFIGDIR%" "%TMP%") do if not exist %%d mkdir %%d
 
 echo [setenv] TAO_ROOT=%TAO_ROOT%
-echo [setenv] conda pkgs  -> %CONDA_PKGS_DIRS%
-echo [setenv] pip cache   -> %PIP_CACHE_DIR%
-echo [setenv] TMP/TEMP    -> %TMP%
-echo [setenv] project py  -> %TAO_PY%
+echo [setenv] conda pkgs: %CONDA_PKGS_DIRS%
+echo [setenv] pip cache: %PIP_CACHE_DIR%
+echo [setenv] TMP/TEMP: %TMP%
+echo [setenv] project py: %TAO_PY%

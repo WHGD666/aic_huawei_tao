@@ -426,6 +426,20 @@ def test_adapter_restores_seed_after_each_run(tmp_path):
     assert params.read_bytes() == original
 
 
+def test_adapter_rejects_stale_placer_def(tmp_path):
+    from unittest.mock import patch
+    from tools.evaluate_open3dbench import run_placer
+
+    o3 = tmp_path / "Open3DBench"
+    out_def = o3 / "Place-LoL" / "binaries" / "converted_output" / "default" / "harness" / "bp_fe.def"
+    out_def.parent.mkdir(parents=True)
+    out_def.write_text("old DEF")
+    with patch("tools.evaluate_open3dbench.run", return_value=0):
+        result = run_placer(o3, "bp_fe-ng45", 1001, "harness", "default", "true", {},
+                            tmp_path / "driver.log", False, 10)
+    assert result is None
+
+
 def test_adapter_inplace_guard_and_repaired_alias(tmp_path):
     from tools.evaluate_open3dbench import collect, main
 
@@ -435,8 +449,40 @@ def test_adapter_inplace_guard_and_repaired_alias(tmp_path):
     out = tmp_path / "out"
     assert main(["--workdir", str(work), "--out", str(out), "--o3", str(o3), "--inplace"]) == 2
     assert not (o3 / "edit.py").exists()
+    empty = tmp_path / "empty"; empty.mkdir()
+    assert main(["--workdir", str(empty), "--out", str(out), "--o3", str(o3),
+                 "--seeds", "1001,1002"]) == 2
     log_dir = tmp_path / "logs"; log_dir.mkdir()
     results_dir = tmp_path / "results"; results_dir.mkdir()
     (log_dir / "3_4b_task1_repaired.json").write_text("{}")
     collect(log_dir, results_dir, out, "3_4b_task1_repaired.json", 0, False)
     assert (out / "placeopt.json").exists()
+    (log_dir / "5_1_sampled.json").write_text("{}")
+    collect(log_dir, results_dir, out, "5_1_sampled.json", 0, False)
+    assert (out / "globalroute.json").exists()
+
+
+def test_adapter_uses_make_environment_and_detects_masked_error(tmp_path):
+    from unittest.mock import patch
+    from tools.evaluate_open3dbench import run_backend
+
+    o3 = tmp_path / "Open3DBench"
+    flow = o3 / "OpenROAD-3D" / "flow"
+    flow.mkdir(parents=True)
+    work_home = tmp_path / "work"
+    pdn_log = work_home / "logs" / "nangate45_3D" / "bp_fe" / "lol" / "2_6_floorplan_pdn.log"
+    pdn_log.parent.mkdir(parents=True)
+    pdn_log.write_text("[ERROR PDN-0179] Unable to repair all channels.\n")
+    commands = []
+
+    def fake_run(cmd, cwd, env, logfile, dry, timeout):
+        commands.append((cmd, cwd, env))
+        return 0
+
+    with patch("tools.evaluate_open3dbench.run", side_effect=fake_run):
+        result = run_backend(o3, "bp_fe-ng45", 1001, "partition_placement", "tcad25", "default",
+                             None, {}, tmp_path / "driver.log", False, 60, work_home)
+    assert result["rc"] == "1"
+    assert result["stage_json"] == "3_4_sampled.json"
+    assert commands[0][0][:3] == ["make", "-f", "Makefile"]
+    assert commands[0][2]["WORK_HOME"] == str(work_home)
